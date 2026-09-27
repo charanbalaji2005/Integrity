@@ -1,0 +1,273 @@
+@import './fonts.css';
+@import './tailwind.css';
+@import './theme.css';
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+html,
+body {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+}
+
+/* Apple Liquid Glass Button Texture */
+.btn-liquid-glass {
+  position: relative;
+  background: linear-gradient(to bottom,
+      rgba(255, 255, 255, 0.72) 0%,
+      rgba(255, 255, 255, 0.35) 50%,
+      rgba(240, 240, 240, 0.45) 51%,
+      rgba(235, 235, 235, 0.6) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+  border-top-color: rgba(255, 255, 255, 0.75) !important;
+  border-bottom-color: rgba(0, 0, 0, 0.18) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.05),
+    0 1px 2px rgba(0, 0, 0, 0.08),
+    0 4px 12px rgba(142, 126, 98, 0.12) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+  color: #0C090A !important;
+  font-weight: 700 !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  overflow: hidden;
+}
+
+.btn-liquid-glass::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(to bottom,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0.05) 100%);
+  border-bottom-left-radius: 50% 20%;
+  border-bottom-right-radius: 50% 20%;
+  pointer-events: none;
+}
+
+.btn-liquid-glass:hover {
+  background: linear-gradient(to bottom,
+      rgba(255, 255, 255, 0.85) 0%,
+      rgba(255, 255, 255, 0.45) 50%,
+      rgba(245, 245, 245, 0.55) 51%,
+      rgba(240, 240, 240, 0.7) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.05),
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    0 6px 16px rgba(142, 126, 98, 0.18) !important;
+  transform: translateY(-0.5px);
+}
+
+.btn-liquid-glass:active {
+  background: linear-gradient(to bottom,
+      rgba(225, 225, 225, 0.6) 0%,
+      rgba(230, 230, 230, 0.5) 100%) !important;
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.6),
+    0 1px 1px rgba(0, 0, 0, 0.12) !important;
+  transform: translateY(0.5px) scale(0.98);
+}
+
+/* Apple Black Liquid Glass Button Texture */
+.btn-liquid-glass-black {
+  position: relative;
+  background: linear-gradient(to bottom,
+      rgba(30, 30, 30, 0.95) 0%,
+      rgba(20, 20, 20, 0.8) 50%,
+      rgba(10, 10, 10, 0.85) 51%,
+      rgba(5, 5, 5, 0.98) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-top-color: rgba(255, 255, 255, 0.3) !important;
+  border-bottom-color: rgba(0, 0, 0, 0.7) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.5),
+    0 1px 2px rgba(0, 0, 0, 0.12),
+    0 4px 12px rgba(0, 0, 0, 0.21) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.5) !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+  font-weight: 700 !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  overflow: hidden;
+}
+
+.btn-liquid-glass-black::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(to bottom,
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.01) 100%);
+  border-bottom-left-radius: 50% 20%;
+  border-bottom-right-radius: 50% 20%;
+  pointer-events: none;
+}
+
+.btn-liquid-glass-black:hover {
+  background: linear-gradient(to bottom,
+      rgba(45, 45, 45, 0.98) 0%,
+      rgba(30, 30, 30, 0.85) 50%,
+      rgba(20, 20, 20, 0.9) 51%,
+      rgba(10, 10, 10, 1) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.4),
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    0 6px 16px rgba(0, 0, 0, 0.35) !important;
+  transform: translateY(-0.5px);
+  color: #ffffff !important;
+}
+
+.btn-liquid-glass-black:active {
+  background: linear-gradient(to bottom,
+      rgba(15, 15, 15, 0.9) 0%,
+      rgba(5, 5, 5, 0.95) 100%) !important;
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    0 1px 1px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(0.5px) scale(0.98);
+}
+
+/* Landing Page Custom Styles */
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.08);
+  border-radius: 32px;
+}
+
+.text-glow {
+  text-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+}
+
+.nav-blur {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Custom Identity Verification Animations & Styles */
+.transition-premium {
+  transition-property: transform, box-shadow, background-color, border-color, color, opacity;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card {
+  background-color: var(--color-card-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: 1rem;
+  box-shadow: var(--shadow-card);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* HUD scan-line sweep */
+@keyframes scan-sweep {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+.animate-scan-sweep {
+  animation: scan-sweep 2.4s ease-in-out infinite;
+}
+
+/* Face oval trace */
+@keyframes oval-trace {
+  0% {
+    stroke-dashoffset: 1000;
+  }
+
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-oval-trace {
+  stroke-dasharray: 1000;
+  animation: oval-trace 2.8s ease-in-out infinite;
+}
+
+/* Ring pulse */
+@keyframes ring-pulse {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.55;
+  }
+
+  70% {
+    transform: scale(1.08);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1.08);
+    opacity: 0;
+  }
+}
+
+.animate-ring-pulse {
+  animation: ring-pulse 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .animate-scan-sweep,
+  .animate-oval-trace,
+  .animate-ring-pulse {
+    animation: none !important;
+  }
+}

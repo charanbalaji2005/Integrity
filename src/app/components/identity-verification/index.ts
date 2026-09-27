@@ -1,0 +1,7 @@
+export { IdentityHeader } from './IdentityHeader'
+export { IdentityProgressBar } from './IdentityProgressBar'
+export { DocumentUpload } from './DocumentUpload'
+export { FaceVerification } from './FaceVerification'
+export { PrivacyCard } from './PrivacyCard'
+export { IdentityFooter } from './IdentityFooter'
+export { ActionButtons } from './ActionButtons'
