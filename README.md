@@ -1,41 +1,62 @@
-Below is a full README you can use for your **IntegrityOS / Assessment Integrity Agent** repository.
+<div align="center">
 
-````markdown
-# 🛡️ IntegrityOS — AI-Powered Assessment Integrity Platform
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=700&size=36&pause=1000&color=6366F1&center=true&vCenter=true&width=700&lines=%F0%9F%9B%A1%EF%B8%8F+IntegrityOS;AI-Powered+Assessment+Integrity;Monitor.+Detect.+Secure." alt="IntegrityOS" />
 
-IntegrityOS is an AI-powered assessment integrity and monitoring platform designed to provide secure, intelligent, and centralized management of online assessments.
+### A unified platform for secure online assessments, real-time monitoring, AI-assisted integrity analysis and security operations.
 
-The platform combines real-time assessment monitoring, AI-assisted integrity analysis, security threat detection, role-based portals, and administrative controls to help educational institutions manage digital assessments more effectively.
+<br/>
+
+[![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-assessment--integrity.vercel.app-6366F1?style=for-the-badge)](https://assessment-integrity.vercel.app/)
+[![Status](https://img.shields.io/badge/Status-Deployed_/_Pilot_Ready-22C55E?style=for-the-badge)](#-project-status)
+
+![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![shadcn/ui](https://img.shields.io/badge/shadcn%2Fui-000000?style=flat-square&logo=shadcnui&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat-square&logo=nodedotjs&logoColor=white)
+![Express](https://img.shields.io/badge/Express.js-000000?style=flat-square&logo=express&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=flat-square&logo=prisma&logoColor=white)
+![Socket.IO](https://img.shields.io/badge/Socket.IO-010101?style=flat-square&logo=socketdotio&logoColor=white)
+![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=flat-square&logo=langchain&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white)
+
+[Overview](#-overview) •
+[Features](#-key-features) •
+[Architecture](#-system-architecture) •
+[Tech Stack](#-technology-stack) •
+[Getting Started](#-getting-started) •
+[Security](#-security-operations) •
+[Roadmap](#-roadmap) •
+[Team](#-project-team)
+
+</div>
 
 ---
 
-## 📌 Overview
+## 📖 Overview
 
-Modern online assessments face challenges such as plagiarism, impersonation, suspicious behavior, unauthorized assistance, and cybersecurity threats.
+Online assessments face real challenges: **plagiarism, impersonation, suspicious behavior, unauthorized assistance and cybersecurity threats.**
 
-IntegrityOS provides a unified platform where students, faculty members, support teams, and administrators can interact with the assessment system through dedicated portals.
+**IntegrityOS** brings students, faculty, support teams and administrators into one platform, with dedicated portals, live session monitoring, AI-assisted analysis and a security operations console.
 
-The platform focuses on:
-
-- Secure assessment management
-- Live session monitoring
-- AI-assisted integrity analysis
-- Suspicious activity detection
-- Security incident tracking
-- Role-based access
-- Centralized administration
-- Assessment reports and analytics
+| 🎯 Focus Area | 📝 What It Delivers |
+|---|---|
+| **Secure assessments** | Centralized assessment management |
+| **Live monitoring** | Real-time session tracking and status |
+| **AI analysis** | Plagiarism, behavior and violation analysis |
+| **Threat detection** | Security event logging and incident tracking |
+| **Access control** | Role-based portals for every user type |
+| **Insight** | Reports, analytics and risk scoring |
 
 ---
 
 ## ✨ Key Features
 
+<table>
+<tr>
+<td width="50%" valign="top">
+
 ### 🎥 Live Assessment Monitoring
-
-Monitor active assessment sessions and track suspicious activities during examinations.
-
-Features include:
-
 - Live session monitoring
 - Candidate activity tracking
 - Risk score management
@@ -43,14 +64,10 @@ Features include:
 - Suspicious behavior detection
 - Session status tracking
 
----
+</td>
+<td width="50%" valign="top">
 
 ### 🤖 AI-Assisted Integrity Analysis
-
-IntegrityOS uses AI-based workflows to assist in identifying potentially suspicious assessment activities.
-
-The AI layer can support:
-
 - Plagiarism analysis
 - Suspicious behavior analysis
 - Assessment integrity checks
@@ -58,223 +75,148 @@ The AI layer can support:
 - Security event analysis
 - Automated risk evaluation
 
-AI-generated results are intended to support human reviewers and should not be considered automatic final judgments.
-
----
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
 
 ### 🔐 WAF Security Agent
-
-The platform includes security monitoring capabilities for detecting and recording potentially suspicious security events.
-
-The security operations interface provides:
-
 - Dynamic agent monitoring
 - Security event simulation
 - Risk score management
-- Security incident logging
+- Incident logging
 - Threat intelligence feed
 - Automated incident analysis
 
-Example monitored events may include:
-
-- Authentication failures
-- Suspicious login behavior
-- Multiple-face detection events
-- Suspicious registration patterns
-- Development tool bypass attempts
-- Other assessment-related security events
-
----
+</td>
+<td width="50%" valign="top">
 
 ### 👁️ Behavior Analysis
+- Records behavioral integrity indicators
+- Presents events to authorized reviewers
+- Centralized review workflow for suspicious activity
 
-The system helps monitor behavioral indicators during assessment sessions.
+</td>
+</tr>
+</table>
 
-Potential integrity events can be recorded and presented to authorized reviewers for further investigation.
-
-This provides a centralized workflow for reviewing suspicious assessment activity.
-
----
+> [!IMPORTANT]
+> AI-generated results **support human reviewers** and are not automatic final judgments. See [Responsible Use](#️-responsible-use).
 
 ### 👥 Multi-Role Portal System
 
-IntegrityOS provides dedicated interfaces for different users.
-
-#### Student Portal
-
-Students can access assessment-related functionality through a dedicated user interface.
-
-#### Faculty Portal
-
-Faculty members can manage and review assessment-related activities.
-
-#### Support Portal
-
-Support personnel can assist with operational and technical issues.
-
-#### Admin Portal
-
-Administrators can access system-level monitoring, security controls, reports, and management features.
-
----
+| Portal | Audience | Purpose |
+|:---:|---|---|
+| 🎓 **Student** | Candidates | Access assessment functionality |
+| 🧑‍🏫 **Faculty** | Instructors | Manage and review assessment activity |
+| 🛠️ **Support** | Support staff | Assist with operational and technical issues |
+| 🛡️ **Admin** | Administrators | Monitoring, security controls, reports and system management |
 
 ### 📊 Admin Dashboard
 
-The administrative dashboard provides centralized access to major system modules.
+```text
+Overview  ▸  Assessments  ▸  Live Monitoring  ▸  AI Violations  ▸  Students
+Reports   ▸  Analytics    ▸  Security Operations  ▸  Settings
+```
 
-Key sections include:
+---
 
-- Overview
-- Assessments
-- Live Monitoring
-- AI Violations
-- Students
-- Reports
-- Analytics
-- Security Operations
-- Settings
+## 🖼️ Screenshots
+
+> Add your screenshots to a `docs/screenshots/` folder and update the paths below.
+
+| Admin Dashboard | Live Monitoring |
+|:---:|:---:|
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Live Monitoring](docs/screenshots/live-monitoring.png) |
+
+| AI Violations | WAF Security Operations |
+|:---:|:---:|
+| ![AI Violations](docs/screenshots/ai-violations.png) | ![Security Ops](docs/screenshots/security-ops.png) |
 
 ---
 
 ## 🎯 Project Objectives
 
-The main objectives of IntegrityOS are:
-
-1. Build and deploy a centralized platform for secure assessment management and monitoring.
-
-2. Integrate AI-based plagiarism detection, behavior analysis, and suspicious activity monitoring.
-
-3. Implement real-time security monitoring and automated threat detection to improve assessment integrity.
+1. 🏗️ Build and deploy a centralized platform for secure assessment management and monitoring.
+2. 🤖 Integrate AI-based plagiarism detection, behavior analysis and suspicious activity monitoring.
+3. 🛰️ Implement real-time security monitoring and automated threat detection to improve assessment integrity.
 
 ---
 
 ## 🏗️ System Architecture
 
-The high-level system workflow is:
+```mermaid
+flowchart TD
+    U["👤 User / Administrator"] --> F["🖥️ Frontend<br/>React + TypeScript + shadcn/ui"]
+    F -->|REST APIs| B["⚙️ Backend<br/>Node.js + Express"]
+    F <-->|WebSocket| S["📡 Socket.IO<br/>Real-time events"]
+    B --> A["🔑 Authentication &<br/>Business Logic"]
+    A --> AI["🤖 AI / Monitoring Services<br/>Groq · Llama · LangChain · LangGraph"]
+    A --> D[("🗄️ PostgreSQL<br/>Prisma ORM · Neon")]
+    AI --> D
+    S --> B
+    D --> R["📊 Reports · Violations · Analytics"]
+    R --> F
+```
 
-User / Administrator
-        ↓
-Frontend Application
-        ↓
-Backend REST APIs
-        ↓
-Authentication & Business Logic
-        ↓
-AI / Monitoring Services
-        ↓
-Database
-        ↓
-Reports, Violations & Analytics
+**Request lifecycle**
 
-A typical request flows through the system as follows:
-
-1. A user accesses the appropriate IntegrityOS portal.
+1. A user opens the appropriate IntegrityOS portal.
 2. The frontend sends requests to the backend APIs.
 3. The backend validates and processes the request.
-4. Assessment and user information is retrieved from or stored in the database.
+4. Assessment and user data is read from or written to the database.
 5. AI or monitoring services process relevant events when required.
 6. Results and violations are recorded.
-7. Authorized users can review the information through the dashboard.
+7. Authorized users review everything through the dashboard.
 
 ---
 
 ## 🛠️ Technology Stack
 
-### Frontend
-
-- React
-- TypeScript
-- shadcn/ui
-- Modern component-based architecture
-- Responsive UI design
-
-### Backend
-
-- Node.js
-- Express.js
-- REST APIs
-- Authentication and authorization
-- Application business logic
-
-### Database
-
-- PostgreSQL
-- Prisma ORM
-- Neon
-
-### AI & Intelligent Processing
-
-The project architecture includes AI-oriented services and integrations for integrity and security analysis.
-
-Technologies explored or integrated in the project include:
-
-- Groq-hosted LLMs
-- Llama models
-- LangChain
-- LangGraph
-- TensorFlow-based processing
-
-### Real-Time Communication
-
-- Socket.IO
-
-Used for functionality that requires real-time communication and monitoring.
-
-### Development & Design Tools
-
-- Git
-- GitHub
-- Postman
-- Figma
-
-### Deployment
-
-- Vercel
+| Layer | Technologies |
+|---|---|
+| **Frontend** | React, TypeScript, shadcn/ui, responsive component-based UI |
+| **Backend** | Node.js, Express.js, REST APIs, authentication & authorization |
+| **Database** | PostgreSQL, Prisma ORM, Neon |
+| **AI & Processing** | Groq-hosted LLMs, Llama models, LangChain, LangGraph, TensorFlow-based processing |
+| **Real-time** | Socket.IO |
+| **Design & Tooling** | Git, GitHub, Postman, Figma |
+| **Deployment** | Vercel |
 
 ---
 
 ## 📂 Project Structure
 
-The project is organized into separate frontend and backend applications.
-
 ```text
 IntegrityOS/
-│
-├── assessment-integrity/
+├── assessment-integrity/            # Frontend application
 │   ├── src/
 │   ├── components/
 │   ├── pages/
-│   ├── public/
-│   └── ...
+│   └── public/
 │
-├── assessment-integrity-backend/
+├── assessment-integrity-backend/    # Backend API
 │   ├── src/
 │   ├── routes/
 │   ├── controllers/
 │   ├── services/
 │   ├── middleware/
-│   ├── prisma/
-│   └── ...
+│   └── prisma/
 │
 └── README.md
-````
+```
 
-The exact folder structure may vary depending on the current project version.
+> The exact structure may vary between project versions.
 
 ---
 
-## ⚙️ Installation
+## 🚀 Getting Started
 
 ### Prerequisites
 
-Make sure the following are installed:
-
-* Node.js
-* npm
-* Git
-* PostgreSQL or access to a hosted PostgreSQL database
-
-Check your installations:
+- **Node.js** and **npm**
+- **Git**
+- **PostgreSQL** (local) or a hosted database such as Neon
 
 ```bash
 node --version
@@ -282,103 +224,50 @@ npm --version
 git --version
 ```
 
----
-
-## 📥 Clone the Repository
+### 1️⃣ Clone the repository
 
 ```bash
 git clone <YOUR_REPOSITORY_URL>
-```
-
-Navigate into the project:
-
-```bash
 cd IntegrityOS
 ```
 
----
-
-## 💻 Frontend Setup
-
-Navigate to the frontend directory:
-
-```bash
-cd assessment-integrity
-```
-
-Install dependencies:
-
-```bash
-npm install
-```
-
-Create the required environment configuration based on the project's environment variables.
-
-Start the development server:
-
-```bash
-npm run dev
-```
-
-The frontend will run on the local development URL displayed in the terminal.
-
----
-
-## ⚙️ Backend Setup
-
-Open another terminal and navigate to the backend:
+### 2️⃣ Backend setup
 
 ```bash
 cd assessment-integrity-backend
-```
-
-Install dependencies:
-
-```bash
 npm install
 ```
 
-Configure the required environment variables.
-
-Example:
+Create a `.env` file:
 
 ```env
 DATABASE_URL=your_database_connection_string
-
 JWT_SECRET=your_jwt_secret
-
 GROQ_API_KEY=your_groq_api_key
-
-OPENAI_API_KEY=your_api_key
-
+OPENAI_API_KEY=your_api_key        # optional, only if used
 FRONTEND_URL=http://localhost:3000
 ```
 
-Only include environment variables that are actually required by your current backend configuration.
+| Variable | Required | Description |
+|---|:---:|---|
+| `DATABASE_URL` | ✅ | PostgreSQL connection string |
+| `JWT_SECRET` | ✅ | Secret used to sign auth tokens |
+| `GROQ_API_KEY` | ✅ | Key for Groq-hosted LLMs |
+| `OPENAI_API_KEY` | ➖ | Only if your backend uses it |
+| `FRONTEND_URL` | ✅ | Frontend origin (used for CORS) |
 
-Never commit the `.env` file to GitHub.
+> [!NOTE]
+> Only include variables your backend actually uses, and make sure `FRONTEND_URL` matches the port your frontend runs on.
 
----
-
-## 🗄️ Database Setup
-
-The backend uses PostgreSQL with Prisma for database access.
-
-Generate the Prisma client:
+Set up the database:
 
 ```bash
 npx prisma generate
-```
 
-Apply database migrations if the project contains migrations:
-
-```bash
+# Option A: apply migrations
 npx prisma migrate dev
-```
 
-Alternatively, synchronize the schema during development:
-
-```bash
+# Option B: sync schema during development
 npx prisma db push
 ```
 
@@ -388,21 +277,23 @@ Start the backend:
 npm run dev
 ```
 
+### 3️⃣ Frontend setup
+
+Open a second terminal:
+
+```bash
+cd assessment-integrity
+npm install
+npm run dev
+```
+
+The app will run on the local URL shown in your terminal.
+
 ---
 
 ## 🔒 Environment Variable Security
 
-Sensitive information should always be stored in environment variables.
-
-Do not expose:
-
-* API keys
-* Database passwords
-* JWT secrets
-* Authentication credentials
-* Private service tokens
-
-Add the following to `.gitignore`:
+Never commit secrets. Add this to `.gitignore`:
 
 ```gitignore
 .env
@@ -411,220 +302,132 @@ Add the following to `.gitignore`:
 node_modules/
 ```
 
----
-
-## 🧪 Testing
-
-The platform can be tested by verifying the following workflows:
-
-* User authentication
-* Role-based portal access
-* Assessment management
-* API communication
-* Database operations
-* Live monitoring
-* AI-assisted analysis
-* Security event logging
-* Risk score updates
-* Deployment functionality
-
-Before production deployment, each major workflow should be tested with valid and invalid inputs.
+Never expose API keys, database passwords, JWT secrets, credentials or private service tokens.
 
 ---
 
 ## 🔐 Security Operations
 
-IntegrityOS includes a WAF Security Operations interface for monitoring assessment-related security events.
+The **WAF Security Operations** console lets administrators inspect assessment-related security events from one place.
 
-The module supports:
+| Capability | Description |
+|---|---|
+| Monitoring controls | Start, stop and check monitoring status |
+| Risk score reset | Reset a student's risk score |
+| Incident simulation | Simulate security events for testing |
+| Event logging | Record every security event |
+| Severity classification | Classify threat levels |
+| Mitigation tracking | Track incident mitigation status |
+| Threat intelligence | AI-driven feed of agent-generated events |
 
-* Monitoring status controls
-* Student risk score reset
-* Security incident simulation
-* Security event logging
-* Threat severity classification
-* Incident mitigation tracking
-* AI threat intelligence feeds
+**Example monitored events:** authentication failures · suspicious login behavior · multiple-face detection · suspicious registration patterns · developer-tool bypass attempts.
 
-The security module helps administrators inspect events from a centralized interface.
+### 🧠 AI Threat Intelligence Feed
 
----
+Each event can include:
 
-## 🧠 AI Threat Intelligence
+`Threat target` · `Monitoring agent` · `Security event` · `Severity` · `Mitigation status` · `Timestamp` · `Supporting evidence` · `Risk score`
 
-The AI Threat Intelligence Feed displays security events generated by monitoring agents.
-
-A typical event may contain:
-
-* Threat target
-* Monitoring agent
-* Security event
-* Severity
-* Incident mitigation status
-* Timestamp
-* Supporting evidence
-* Risk score
-
-This enables administrators to review suspicious events and understand why they were recorded.
+This lets administrators see not only *what* was flagged, but *why*.
 
 ---
 
-## 🚀 Deployment
+## 🧪 Testing Checklist
 
-### Frontend
+- [ ] User authentication
+- [ ] Role-based portal access
+- [ ] Assessment management
+- [ ] API communication
+- [ ] Database operations
+- [ ] Live monitoring
+- [ ] AI-assisted analysis
+- [ ] Security event logging
+- [ ] Risk score updates
+- [ ] Deployment functionality
 
-The frontend is deployed using Vercel.
-
-Live application:
-
-[https://assessment-integrity.vercel.app/](https://assessment-integrity.vercel.app/)
-
-### Backend
-
-The backend should be deployed to a server or cloud hosting platform that supports Node.js and the required application services.
-
-After deployment, configure the frontend with the production backend API URL.
-
----
-
-## 📈 Current Project Status
-
-**Status:** Deployed / Pilot Ready
-
-The application has reached a functional deployed stage and includes major assessment management, monitoring, security, and AI-oriented features.
-
-Further testing and production hardening may be required before large-scale institutional use.
+Test each workflow with both valid and invalid inputs before production deployment.
 
 ---
 
-## 🔮 Future Scope
+## ☁️ Deployment
 
-Future improvements may include:
+| Component | Platform | Link |
+|---|---|---|
+| **Frontend** | Vercel | [assessment-integrity.vercel.app](https://assessment-integrity.vercel.app/) |
+| **Backend** | Any Node.js host | Set your production API URL in the frontend config |
 
-* Improved plagiarism detection accuracy
-* Advanced AI-generated content analysis
-* Enhanced behavioral monitoring
-* More accurate risk scoring
-* Advanced assessment analytics
-* Stronger role-based access control
-* Automated incident response workflows
-* Scalable real-time monitoring
-* Improved AI model evaluation
-* Benchmark datasets for integrity detection
-* Enhanced reporting
-* Mobile-responsive improvements
-* Production-grade observability and monitoring
+---
+
+## 📈 Project Status
+
+**Deployed / Pilot Ready.** Core assessment management, monitoring, security and AI-oriented features are functional. Further testing and production hardening are recommended before large-scale institutional use.
+
+---
+
+## 🗺️ Roadmap
+
+- [x] Multi-role portals (Student, Faculty, Support, Admin)
+- [x] Live monitoring and violation logging
+- [x] WAF Security Operations console
+- [x] AI-assisted analysis workflows
+- [x] Vercel deployment
+- [ ] Improved plagiarism detection accuracy
+- [ ] Advanced AI-generated content analysis
+- [ ] Enhanced behavioral monitoring and more accurate risk scoring
+- [ ] Advanced assessment analytics and reporting
+- [ ] Stronger role-based access control
+- [ ] Automated incident response workflows
+- [ ] Scalable real-time monitoring
+- [ ] AI model evaluation and benchmark datasets
+- [ ] Mobile-responsive improvements
+- [ ] Production-grade observability
 
 ---
 
 ## ⚠️ Responsible Use
 
-IntegrityOS is designed as an assessment integrity assistance platform.
-
-AI-generated risk scores and automated detections should be treated as indicators rather than definitive proof of misconduct.
-
-Final academic integrity decisions should involve appropriate human review and supporting evidence.
+IntegrityOS is an **assistance** platform. AI-generated risk scores and automated detections are **indicators, not proof** of misconduct. Final academic integrity decisions should always involve human review and supporting evidence.
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome.
-
-To contribute:
-
-1. Fork the repository.
-2. Create a new branch.
+Contributions are welcome!
 
 ```bash
+# 1. Fork the repo, then create a branch
 git checkout -b feature/your-feature-name
-```
 
-3. Make your changes.
-4. Commit your changes.
-
-```bash
+# 2. Commit your changes
 git commit -m "Add new feature"
-```
 
-5. Push the branch.
-
-```bash
+# 3. Push and open a Pull Request
 git push origin feature/your-feature-name
 ```
-
-6. Create a Pull Request.
 
 ---
 
 ## 👨‍💻 Project Team
+ | Neelampalli Charan Balaji |
 
-### Squad Lead
-
-**Neelampalli Charan Balaji**
-
-### Co-Lead
-
-**Potti Sri Lakshmi Chetan**
-
-### Team Members
-
-* Joshita Sai Sree Kollapudi
-* Kotha Jayaharsha
-* Nissankararao Krishna Vamsi
-* Potti Sri Lakshmi Chetana
-* Varun Narasimha Sai Pavan Tirumala
-
-### Mentor
-
-**Shanmuk**
-
----
-
-## 📚 Tools & Technologies
-
-The project development workflow involved technologies and tools including:
-
-* React
-* TypeScript
-* Node.js
-* Express.js
-* PostgreSQL
-* Prisma
-* Neon
-* Socket.IO
-* LangChain
-* LangGraph
-* Groq
-* Git
-* GitHub
-* Postman
-* Figma
-* Vercel
 
 ---
 
 ## 📄 License
 
-This project is developed as part of an internship project.
-
-Add the appropriate open-source license before allowing external reuse or redistribution.
-
----
+Developed as part of an internship project. Add an appropriate open-source license before allowing external reuse or redistribution.
 
 ## 📞 Contact
 
-For questions or project-related information, contact the project maintainer through the GitHub repository.
+For questions, reach the maintainers through the GitHub repository.
 
 ---
 
-<p align="center">
-  <b>IntegrityOS</b>
-</p>
+<div align="center">
 
-<p align="center">
-  AI-Powered Assessment Integrity, Monitoring & Security Platform
-</p>
-```
+**🛡️ IntegrityOS**
+*AI-Powered Assessment Integrity, Monitoring & Security Platform*
 
-One correction before publishing: your uploaded project files should be checked for the **exact package names, environment variables, run commands, backend deployment URL, and actual repository structure**. The README above uses the project details we discussed, but those installation details should match your code exactly.
+⭐ If you found this project useful, consider giving it a star!
+
+</div>
