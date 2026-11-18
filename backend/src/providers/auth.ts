@@ -324,7 +324,12 @@ export const auth = betterAuth({
 			"http://localhost:5174",
 			"http://localhost:5175",
 		];
-		if (origin && (origin.endsWith(".onrender.com") || origin.endsWith(".vercel.app"))) {
+		if (
+			origin &&
+			(origin.endsWith(".onrender.com") ||
+				origin.endsWith(".vercel.app") ||
+				origin.includes("realultron.xyz"))
+		) {
 			origins.push(origin);
 		}
 		return origins;

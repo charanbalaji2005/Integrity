@@ -56,7 +56,8 @@ app.use(
 			if (
 				allowedOrigins.includes(origin) ||
 				origin.endsWith(".onrender.com") ||
-				origin.endsWith(".vercel.app")
+				origin.endsWith(".vercel.app") ||
+				origin.includes("realultron.xyz")
 			) {
 				return callback(null, true);
 			}
