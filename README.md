@@ -413,9 +413,13 @@ git push origin feature/your-feature-name
 
 ---
 
-## 📄 License
+## 📄 License & Intellectual Property
 
-Developed as part of an internship project. Add an appropriate open-source license before allowing external reuse or redistribution.
+This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.
+Copyright (C) 2026 **Charan Balaji**. All rights reserved.
+
+> **Trademark Notice (Pursuant to Section 7(e) of GNU GPLv3):**  
+> All rights belong to Charan Balaji. This license does **not** grant permission to use the trade names, trademarks, service marks, product names, or logos of the Licensor (including "Integrity" and "IntegrityOS") except for standard attribution requirements. See the [LICENSE](./LICENSE) file for complete terms.
 
 ## 📞 Contact
 

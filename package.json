@@ -1,7 +1,8 @@
 {
-  "name": "@figma/my-make-file",
-  "private": true,
-  "version": "0.0.1",
+  "name": "integrityos",
+  "version": "1.0.0",
+  "author": "Charan Balaji",
+  "license": "GPL-3.0-only",
   "type": "module",
   "scripts": {
     "build": "vite build",

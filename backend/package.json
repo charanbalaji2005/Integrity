@@ -19,8 +19,8 @@
     "test": "vitest run src"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Charan Balaji",
+  "license": "GPL-3.0-only",
   "packageManager": "pnpm@10.33.2",
   "pnpm": {
     "onlyBuiltDependencies": [
