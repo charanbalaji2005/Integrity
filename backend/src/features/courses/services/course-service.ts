@@ -1,8 +1,8 @@
+import type { z } from "zod";
 import { HTTP_STATUS } from "@/constants/http-status";
 import { prisma } from "@/database";
 import { AppError } from "@/utils/app-error";
 import { extractText } from "../../text-extraction/services/text-extraction-service";
-import type { z } from "zod";
 import type {
 	createCourseSchema,
 	materialFieldsSchema,
@@ -161,7 +161,10 @@ export async function uploadSyllabus(
 	});
 
 	try {
-		const text = await extractText((file as UploadedFile).buffer.toString("base64"), stored.mimeType);
+		const text = await extractText(
+			(file as UploadedFile).buffer.toString("base64"),
+			stored.mimeType,
+		);
 		const units = parseSyllabusText(text);
 		await replaceUnits(courseId, syllabus.id, units);
 		await prisma.syllabus.update({
@@ -200,7 +203,10 @@ async function loadSyllabusFor(user: CourseUser, syllabusId: string) {
 		where: { id: syllabusId },
 		include: { course: true },
 	});
-	if (!syllabus || (user.role !== "admin" && syllabus.course.institutionName !== institutionOf(user))) {
+	if (
+		!syllabus ||
+		(user.role !== "admin" && syllabus.course.institutionName !== institutionOf(user))
+	) {
 		throw new AppError("Syllabus not found.", HTTP_STATUS.NOT_FOUND);
 	}
 	return syllabus;
@@ -224,7 +230,9 @@ export async function saveSyllabusStructure(
 			include: { topics: { select: { id: true } } },
 		});
 		const unitIds = new Set(existingUnits.map((u) => u.id));
-		const keptUnitIds = new Set(input.units.map((u) => u.id).filter((id): id is string => !!id && unitIds.has(id)));
+		const keptUnitIds = new Set(
+			input.units.map((u) => u.id).filter((id): id is string => !!id && unitIds.has(id)),
+		);
 		await tx.courseUnit.deleteMany({
 			where: { syllabusId, id: { notIn: [...keptUnitIds] } },
 		});
@@ -237,7 +245,13 @@ export async function saveSyllabusStructure(
 							data: { title: u.title, number: i + 1, order: i },
 						})
 					: await tx.courseUnit.create({
-							data: { courseId: syllabus.courseId, syllabusId, title: u.title, number: i + 1, order: i },
+							data: {
+								courseId: syllabus.courseId,
+								syllabusId,
+								title: u.title,
+								number: i + 1,
+								order: i,
+							},
 						});
 			const ownTopicIds = new Set(
 				existingUnits.find((e) => e.id === unit.id)?.topics.map((t) => t.id) ?? [],
@@ -286,7 +300,11 @@ export async function getSyllabusFile(user: CourseUser, syllabusId: string) {
 
 function assertMaterialShape(kind: string, url: string | null | undefined, hasFile: boolean) {
 	if (LINK_KINDS.has(kind)) {
-		if (!url) throw new AppError("A link is required for video and external resources.", HTTP_STATUS.BAD_REQUEST);
+		if (!url)
+			throw new AppError(
+				"A link is required for video and external resources.",
+				HTTP_STATUS.BAD_REQUEST,
+			);
 	} else if (!hasFile) {
 		throw new AppError("Attach a file for this material type.", HTTP_STATUS.BAD_REQUEST);
 	}
@@ -326,7 +344,7 @@ export async function createMaterial(
 			kind: fields.kind,
 			title: fields.title,
 			description: fields.description || null,
-			url: isLink ? fields.url ?? null : null,
+			url: isLink ? (fields.url ?? null) : null,
 			fileId,
 			uploadedById: user.id,
 		},
@@ -340,7 +358,10 @@ async function loadMaterialFor(user: CourseUser, materialId: string) {
 		where: { id: materialId },
 		include: { course: true },
 	});
-	if (!material || (user.role !== "admin" && material.course.institutionName !== institutionOf(user))) {
+	if (
+		!material ||
+		(user.role !== "admin" && material.course.institutionName !== institutionOf(user))
+	) {
 		throw new AppError("Material not found.", HTTP_STATUS.NOT_FOUND);
 	}
 	return material;
@@ -368,7 +389,8 @@ export async function updateMaterial(
 		data: {
 			kind,
 			title: fields.title ?? material.title,
-			description: fields.description !== undefined ? fields.description || null : material.description,
+			description:
+				fields.description !== undefined ? fields.description || null : material.description,
 			url,
 			fileId: isLink ? null : fileId,
 		},
@@ -399,12 +421,17 @@ export async function deleteMaterial(user: CourseUser, materialId: string) {
  *    attempt in progress, materials are blocked when the assessment restricts them,
  *    except those explicitly permitted as exam references.
  */
-export async function authorizeMaterialFile(user: CourseUser, materialId: string, download: boolean) {
+export async function authorizeMaterialFile(
+	user: CourseUser,
+	materialId: string,
+	download: boolean,
+) {
 	const material = await prisma.courseMaterial.findUnique({
 		where: { id: materialId },
 		include: { course: true },
 	});
-	if (!material || !material.fileId) throw new AppError("Material not found.", HTTP_STATUS.NOT_FOUND);
+	if (!material || !material.fileId)
+		throw new AppError("Material not found.", HTTP_STATUS.NOT_FOUND);
 	if (isStaff(user)) {
 		if (user.role !== "admin" && material.course.institutionName !== institutionOf(user)) {
 			throw new AppError("Material not found.", HTTP_STATUS.NOT_FOUND);
@@ -415,7 +442,11 @@ export async function authorizeMaterialFile(user: CourseUser, materialId: string
 	const links = await prisma.assessmentMaterial.findMany({
 		where: {
 			materialId,
-			assessment: { published: true, materialsAccessible: true, institutionName: institutionOf(user) },
+			assessment: {
+				published: true,
+				materialsAccessible: true,
+				institutionName: institutionOf(user),
+			},
 		},
 		include: {
 			assessment: {
@@ -442,7 +473,9 @@ export async function authorizeMaterialFile(user: CourseUser, materialId: string
 		return material.fileId;
 	}
 	throw new AppError(
-		download ? "Downloading this material is not permitted." : "This material is not available to you right now.",
+		download
+			? "Downloading this material is not permitted."
+			: "This material is not available to you right now.",
 		HTTP_STATUS.FORBIDDEN,
 	);
 }

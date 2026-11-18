@@ -215,7 +215,7 @@ function QuestionCard({
   if (!q) return null;
   const meta = typeMeta(q.type);
   const issues = questionIssues(q);
-  const plain = q.text.replace(/[*`#>_]/g, "").replace(/\s+/g, " ").trim();
+  const plain = q.text.replace(/_{3,}/g, "▁▁▁").replace(/[*`#>_]/g, "").replace(/\s+/g, " ").trim();
   const topicTitle = syllabus?.units.flatMap((u) => u.topics).find((t) => t.id === q.topicId)?.title;
 
   return (

@@ -22,7 +22,10 @@ const param = (req: Request, key: string) => {
 function parse<T extends z.ZodType>(schema: T, body: unknown): z.infer<T> {
 	const result = schema.safeParse(body);
 	if (!result.success) {
-		throw new AppError(result.error.issues[0]?.message ?? "Validation failed", HTTP_STATUS.BAD_REQUEST);
+		throw new AppError(
+			result.error.issues[0]?.message ?? "Validation failed",
+			HTTP_STATUS.BAD_REQUEST,
+		);
 	}
 	return result.data;
 }
@@ -45,20 +48,36 @@ export async function listCourses(req: Request, res: Response) {
 
 export async function createCourse(req: Request, res: Response) {
 	const input = parse(createCourseSchema, req.body);
-	sendSuccess(res, await service.createCourse(getAuthUser(req), input), "Course created", HTTP_STATUS.CREATED);
+	sendSuccess(
+		res,
+		await service.createCourse(getAuthUser(req), input),
+		"Course created",
+		HTTP_STATUS.CREATED,
+	);
 }
 
 export async function getCourse(req: Request, res: Response) {
-	sendSuccess(res, await service.getCourseDetail(getAuthUser(req), param(req, "id")), "Course retrieved");
+	sendSuccess(
+		res,
+		await service.getCourseDetail(getAuthUser(req), param(req, "id")),
+		"Course retrieved",
+	);
 }
 
 export async function uploadSyllabus(req: Request, res: Response) {
 	const title = typeof req.body?.title === "string" ? req.body.title : undefined;
-	const result = await service.uploadSyllabus(getAuthUser(req), param(req, "id"), uploaded(req), title);
+	const result = await service.uploadSyllabus(
+		getAuthUser(req),
+		param(req, "id"),
+		uploaded(req),
+		title,
+	);
 	sendSuccess(
 		res,
 		result,
-		result.duplicate ? "This syllabus was already uploaded for the course — reusing it." : "Syllabus uploaded",
+		result.duplicate
+			? "This syllabus was already uploaded for the course — reusing it."
+			: "Syllabus uploaded",
 		result.duplicate ? HTTP_STATUS.OK : HTTP_STATUS.CREATED,
 	);
 }
@@ -91,11 +110,18 @@ export async function downloadSyllabus(req: Request, res: Response) {
 
 export async function createMaterial(req: Request, res: Response) {
 	const fields = parse(materialFieldsSchema, cleanFields(req.body));
-	const result = await service.createMaterial(getAuthUser(req), param(req, "id"), fields, uploaded(req));
+	const result = await service.createMaterial(
+		getAuthUser(req),
+		param(req, "id"),
+		fields,
+		uploaded(req),
+	);
 	sendSuccess(
 		res,
 		result.material,
-		result.duplicate ? "This material already exists in the course — reusing it." : "Material added",
+		result.duplicate
+			? "This material already exists in the course — reusing it."
+			: "Material added",
 		result.duplicate ? HTTP_STATUS.OK : HTTP_STATUS.CREATED,
 	);
 }
@@ -116,7 +142,11 @@ export async function deleteMaterial(req: Request, res: Response) {
 
 export async function materialFile(req: Request, res: Response) {
 	const download = req.query.download === "1";
-	const fileId = await service.authorizeMaterialFile(getAuthUser(req), param(req, "materialId"), download);
+	const fileId = await service.authorizeMaterialFile(
+		getAuthUser(req),
+		param(req, "materialId"),
+		download,
+	);
 	const file = await service.getStoredFile(fileId);
 	sendFile(res, file, download ? "attachment" : "inline");
 }

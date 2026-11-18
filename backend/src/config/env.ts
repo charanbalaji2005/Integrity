@@ -37,6 +37,15 @@ const envSchema = z.object({
 
 	FACE_MATCH_THRESHOLD: z.coerce.number().default(0.55),
 
+	/**
+	 * Load face-api + COCO-SSD at boot instead of on first use. Costs ~300 MB of
+	 * resident memory, so it is off by default in production (Render free = 512 MB).
+	 */
+	PRELOAD_ML_MODELS: z
+		.enum(["true", "false"])
+		.optional()
+		.transform((v) => (v === undefined ? process.env.NODE_ENV !== "production" : v === "true")),
+
 	// Ollama
 	OLLAMA_BASE_URL: z.string().url().default("http://localhost:11434"),
 

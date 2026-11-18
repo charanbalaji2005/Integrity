@@ -33,6 +33,7 @@ import { PostExamFeedbackAgent } from "../components/PostExamFeedbackAgent";
 import { QuestionAnswerInput, QuestionPrompt } from "../components/assessment/QuestionAnswerInput";
 import { ExamMaterialsPanel } from "../components/assessment/ExamMaterialsPanel";
 import { isAnswered as hasAnswer, parseJson } from "../components/assessment/question-meta";
+import { LiveProctorMascot } from "../components/mascot/LiveProctorMascot";
 
 async function readApiError(res: Response, fallback: string): Promise<string> {
   try {
@@ -1633,6 +1634,17 @@ export default function StudentExamView({ assessmentId, user, onClose }: Student
                         <X className="size-4" />
                       </button>
                     </div>
+
+                    {/* Live session proctor (animated Vigil reacting to proctoring signals) */}
+                    <LiveProctorMascot
+                      integrityScore={integrityScore}
+                      warningsCount={warningsCount}
+                      faceStatus={faceStatus}
+                      monitoringHealthy={monitoringHealthy}
+                      recording={recording.status === "recording"}
+                      beingWatched={monitoring.channel.beingWatched}
+                      latestNotice={recentProctorAlerts[0]}
+                    />
 
                     {/* Video stream */}
                     <div className="space-y-2">

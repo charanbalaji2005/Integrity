@@ -17,6 +17,202 @@
   },
   "selfHealingLogs": [
     {
+      "id": "sh-6etkw5m",
+      "timestamp": "2026-11-18T11:53:32.001Z",
+      "component": "Ollama Local LLM Agent",
+      "action": "Local API ping timed out. Restarted local background instance.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-416jb1u",
+      "timestamp": "2026-11-18T11:45:31.884Z",
+      "component": "Ollama Local LLM Agent",
+      "action": "Local API ping timed out. Restarted local background instance.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-dtpgft6",
+      "timestamp": "2026-11-18T11:45:01.871Z",
+      "component": "WebSocket Proctoring Stream",
+      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-zvhlv5p",
+      "timestamp": "2026-11-18T11:43:31.841Z",
+      "component": "Ollama Local LLM Agent",
+      "action": "Local API ping timed out. Restarted local background instance.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-9g9ny1j",
+      "timestamp": "2026-11-18T11:40:01.797Z",
+      "component": "WebSocket Proctoring Stream",
+      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-zms1afm",
+      "timestamp": "2026-11-18T11:38:01.779Z",
+      "component": "Ollama Local LLM Agent",
+      "action": "Local API ping timed out. Restarted local background instance.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-003194h",
+      "timestamp": "2026-11-18T11:12:00.595Z",
+      "component": "Ollama Local LLM Agent",
+      "action": "Local API ping timed out. Restarted local background instance.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-btb6ddw",
+      "timestamp": "2026-11-18T11:05:00.514Z",
+      "component": "WebSocket Proctoring Stream",
+      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-j4y0w1y",
+      "timestamp": "2026-11-18T11:02:30.462Z",
+      "component": "Ollama Local LLM Agent",
+      "action": "Local API ping timed out. Restarted local background instance.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-1icovto",
+      "timestamp": "2026-11-18T11:01:30.453Z",
+      "component": "Ollama Local LLM Agent",
+      "action": "Local API ping timed out. Restarted local background instance.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-6fz38uf",
+      "timestamp": "2026-11-18T10:57:00.394Z",
+      "component": "WebSocket Proctoring Stream",
+      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-15zqj5e",
+      "timestamp": "2026-11-18T10:55:00.371Z",
+      "component": "Ollama Local LLM Agent",
+      "action": "Local API ping timed out. Restarted local background instance.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-hcjy5uy",
+      "timestamp": "2026-11-18T10:49:30.286Z",
+      "component": "WebSocket Proctoring Stream",
+      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-sj88zjy",
+      "timestamp": "2026-11-18T10:48:00.256Z",
+      "component": "Ollama Local LLM Agent",
+      "action": "Local API ping timed out. Restarted local background instance.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-9coycl4",
+      "timestamp": "2026-11-18T10:46:00.223Z",
+      "component": "WebSocket Proctoring Stream",
+      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-bgw7wzo",
+      "timestamp": "2026-11-18T10:42:30.150Z",
+      "component": "WebSocket Proctoring Stream",
+      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-5qvn8e7",
+      "timestamp": "2026-11-18T10:39:51.442Z",
+      "component": "Self-Healing Orchestrator",
+      "action": "Self-Healing background service successfully initialized.",
+      "status": "MONITOR"
+    },
+    {
+      "id": "sh-3hqovth",
+      "timestamp": "2026-11-18T03:32:41.879Z",
+      "component": "WebSocket Proctoring Stream",
+      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-v3q6fs7",
+      "timestamp": "2026-11-18T03:07:41.427Z",
+      "component": "WebSocket Proctoring Stream",
+      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-5f2lxv6",
+      "timestamp": "2026-11-18T03:03:41.378Z",
+      "component": "WebSocket Proctoring Stream",
+      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-syv41cz",
+      "timestamp": "2026-11-18T02:56:11.263Z",
+      "component": "Ollama Local LLM Agent",
+      "action": "Local API ping timed out. Restarted local background instance.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-56mbwyw",
+      "timestamp": "2026-11-18T02:55:11.243Z",
+      "component": "WebSocket Proctoring Stream",
+      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-60dybhq",
+      "timestamp": "2026-11-18T02:48:11.105Z",
+      "component": "WebSocket Proctoring Stream",
+      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-sa3zsdu",
+      "timestamp": "2026-11-18T02:47:11.094Z",
+      "component": "WebSocket Proctoring Stream",
+      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-bfg0sr4",
+      "timestamp": "2026-11-18T02:41:41.028Z",
+      "component": "WebSocket Proctoring Stream",
+      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-jos5jap",
+      "timestamp": "2026-11-18T02:38:40.983Z",
+      "component": "WebSocket Proctoring Stream",
+      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-m08teyr",
+      "timestamp": "2026-11-18T02:31:40.902Z",
+      "component": "WebSocket Proctoring Stream",
+      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-bgbciom",
+      "timestamp": "2026-11-18T02:31:10.903Z",
+      "component": "WebSocket Proctoring Stream",
+      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
+      "status": "HEALED"
+    },
+    {
       "id": "sh-bmswglc",
       "timestamp": "2026-11-18T02:26:10.813Z",
       "component": "WebSocket Proctoring Stream",
@@ -518,202 +714,6 @@
       "timestamp": "2026-11-15T17:39:24.032Z",
       "component": "Ollama Local LLM Agent",
       "action": "Local API ping timed out. Restarted local background instance.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-adxd8ro",
-      "timestamp": "2026-11-15T17:34:23.941Z",
-      "component": "Ollama Local LLM Agent",
-      "action": "Local API ping timed out. Restarted local background instance.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-jbq8z1p",
-      "timestamp": "2026-11-15T17:29:23.831Z",
-      "component": "Ollama Local LLM Agent",
-      "action": "Local API ping timed out. Restarted local background instance.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-6755yz3",
-      "timestamp": "2026-11-15T17:27:23.805Z",
-      "component": "WebSocket Proctoring Stream",
-      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-8mz8rlz",
-      "timestamp": "2026-11-15T17:26:53.791Z",
-      "component": "WebSocket Proctoring Stream",
-      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-eu33elg",
-      "timestamp": "2026-11-15T17:23:53.758Z",
-      "component": "Ollama Local LLM Agent",
-      "action": "Local API ping timed out. Restarted local background instance.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-zd5f0zr",
-      "timestamp": "2026-11-15T17:23:23.752Z",
-      "component": "Ollama Local LLM Agent",
-      "action": "Local API ping timed out. Restarted local background instance.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-0ek76ia",
-      "timestamp": "2026-11-15T17:22:23.743Z",
-      "component": "Ollama Local LLM Agent",
-      "action": "Local API ping timed out. Restarted local background instance.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-2k092w6",
-      "timestamp": "2026-11-15T17:21:23.730Z",
-      "component": "WebSocket Proctoring Stream",
-      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-xzbjs2m",
-      "timestamp": "2026-11-15T17:20:53.715Z",
-      "component": "WebSocket Proctoring Stream",
-      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-ygm5nyg",
-      "timestamp": "2026-11-15T17:20:23.708Z",
-      "component": "WebSocket Proctoring Stream",
-      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-zpptgvo",
-      "timestamp": "2026-11-15T17:19:53.693Z",
-      "component": "Ollama Local LLM Agent",
-      "action": "Local API ping timed out. Restarted local background instance.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-d8a1qlf",
-      "timestamp": "2026-11-15T17:18:53.668Z",
-      "component": "Ollama Local LLM Agent",
-      "action": "Local API ping timed out. Restarted local background instance.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-2ix0oxg",
-      "timestamp": "2026-11-15T17:15:53.632Z",
-      "component": "WebSocket Proctoring Stream",
-      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-13zn87u",
-      "timestamp": "2026-11-15T16:59:56.608Z",
-      "component": "WebSocket Proctoring Stream",
-      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-7oih47x",
-      "timestamp": "2026-11-15T16:19:52.078Z",
-      "component": "WebSocket Proctoring Stream",
-      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-p15cqt3",
-      "timestamp": "2026-11-15T16:07:54.506Z",
-      "component": "WebSocket Proctoring Stream",
-      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-59hqjlq",
-      "timestamp": "2026-11-15T16:04:54.452Z",
-      "component": "WebSocket Proctoring Stream",
-      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-z8ip4gg",
-      "timestamp": "2026-11-15T16:04:24.441Z",
-      "component": "WebSocket Proctoring Stream",
-      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-55et7uk",
-      "timestamp": "2026-11-15T15:54:52.406Z",
-      "component": "WebSocket Proctoring Stream",
-      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-he6q4g6",
-      "timestamp": "2026-11-15T15:50:22.346Z",
-      "component": "WebSocket Proctoring Stream",
-      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-r1x8d0z",
-      "timestamp": "2026-11-15T15:42:22.219Z",
-      "component": "Ollama Local LLM Agent",
-      "action": "Local API ping timed out. Restarted local background instance.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-0mdmmc5",
-      "timestamp": "2026-11-15T15:41:52.212Z",
-      "component": "Ollama Local LLM Agent",
-      "action": "Local API ping timed out. Restarted local background instance.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-20laows",
-      "timestamp": "2026-11-15T15:32:22.034Z",
-      "component": "WebSocket Proctoring Stream",
-      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-metbs6a",
-      "timestamp": "2026-11-15T15:29:22.001Z",
-      "component": "Ollama Local LLM Agent",
-      "action": "Local API ping timed out. Restarted local background instance.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-njteu9y",
-      "timestamp": "2026-11-15T15:26:21.953Z",
-      "component": "WebSocket Proctoring Stream",
-      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-993s477",
-      "timestamp": "2026-11-15T15:25:21.941Z",
-      "component": "WebSocket Proctoring Stream",
-      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-o54r816",
-      "timestamp": "2026-11-15T15:14:21.765Z",
-      "component": "Ollama Local LLM Agent",
-      "action": "Local API ping timed out. Restarted local background instance.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-318679e",
-      "timestamp": "2026-11-15T15:08:51.692Z",
-      "component": "WebSocket Proctoring Stream",
-      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
       "status": "HEALED"
     }
   ]

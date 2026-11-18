@@ -63,11 +63,10 @@ export function fmt(v: number | null | undefined, suffix = ""): string {
   return `${Math.round(v * 10) / 10}${suffix}`;
 }
 
-/** Rates may come as 0–1 fractions or 0–100 percentages; normalise to a percent label. */
+/** Rates from the analytics API are already 0–100 percentages. */
 export function fmtRate(v: number | null | undefined): string {
   if (v === null || v === undefined || !Number.isFinite(v)) return "—";
-  const pct = v <= 1 ? v * 100 : v;
-  return `${Math.round(pct * 10) / 10}%`;
+  return `${Math.round(v * 10) / 10}%`;
 }
 
 export function formatDateTime(iso: string | null | undefined): string {

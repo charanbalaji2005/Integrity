@@ -22,7 +22,11 @@ const DOC = "application/msword";
 const PPT = "application/vnd.ms-powerpoint";
 
 export const FILE_RULES: Record<FilePurpose, FileRule> = {
-	syllabus: { maxBytes: 10 * MB, types: { pdf: PDF, docx: DOCX }, label: "PDF or DOCX up to 10 MB" },
+	syllabus: {
+		maxBytes: 10 * MB,
+		types: { pdf: PDF, docx: DOCX },
+		label: "PDF or DOCX up to 10 MB",
+	},
 	material: {
 		maxBytes: 25 * MB,
 		types: {
@@ -38,7 +42,13 @@ export const FILE_RULES: Record<FilePurpose, FileRule> = {
 	},
 	"question-image": {
 		maxBytes: 5 * MB,
-		types: { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", gif: "image/gif" },
+		types: {
+			png: "image/png",
+			jpg: "image/jpeg",
+			jpeg: "image/jpeg",
+			webp: "image/webp",
+			gif: "image/gif",
+		},
 		label: "PNG, JPG, WEBP or GIF up to 5 MB",
 	},
 };
@@ -70,7 +80,9 @@ function signatureMatches(ext: string, buf: Buffer): boolean {
 		case "gif":
 			return head(3).toString("ascii") === "GIF";
 		case "webp":
-			return head(4).toString("ascii") === "RIFF" && buf.subarray(8, 12).toString("ascii") === "WEBP";
+			return (
+				head(4).toString("ascii") === "RIFF" && buf.subarray(8, 12).toString("ascii") === "WEBP"
+			);
 		case "txt":
 		case "md":
 			return !buf.subarray(0, 4096).includes(0); // plain text has no NUL bytes
@@ -105,7 +117,10 @@ export function validateUpload(file: UploadedFile | undefined, purpose: FilePurp
 		);
 	}
 	// Strip any path components and control characters from the stored name.
-	const fileName = path.basename(file.originalname).replace(/[\u0000-\u001f"\\]/g, "_").slice(0, 200);
+	const fileName = [...path.basename(file.originalname)]
+		.map((ch) => (ch.charCodeAt(0) < 32 || ch === '"' || ch === "\\" ? "_" : ch))
+		.join("")
+		.slice(0, 200);
 	return { ext, mimeType, fileName };
 }
 

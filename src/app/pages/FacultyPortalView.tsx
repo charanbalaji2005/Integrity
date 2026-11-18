@@ -58,6 +58,18 @@ import { readPreferences, usePreferences } from "../settings/preferences";
 import { FacultyMessagingView } from "./FacultyMessagingView";
 import { FacultyAIChat } from "../components/faculty/FacultyAIChat";
 import { createAuthedSocket, joinRoom } from "../utils/socket-client";
+import AssessmentBuilder from "./faculty/assessment-builder/AssessmentBuilder";
+import { apiFetch } from "../utils/api-client";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../components/ui/alert-dialog";
 
 interface FacultyPortalViewProps {
   user: any;
@@ -113,63 +125,28 @@ export default function FacultyPortalView({ user, session, handleLogout }: Facul
   }, []);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Assessment Builder States
-  const [newTitle, setNewTitle] = useState("");
-  const [newDesc, setNewDesc] = useState("");
-  const [newDuration, setNewDuration] = useState("60");
-  const [newGrading, setNewGrading] = useState("points");
-  const [newStart, setNewStart] = useState("");
-  const [newEnd, setNewEnd] = useState("");
-  const [newLimit, setNewLimit] = useState("1");
-  const [questions, setQuestions] = useState<any[]>([]);
+  // Assessment Builder: which assessment is open (null = new) and a nonce to force a fresh form.
+  const [builderTarget, setBuilderTarget] = useState<{ id: string | null; nonce: number }>({ id: null, nonce: 0 });
+  const builderDirtyRef = React.useRef(false);
+  const handleBuilderDirty = React.useCallback((d: boolean) => {
+    builderDirtyRef.current = d;
+  }, []);
+  const confirmLeaveBuilder = () =>
+    !(activeTab === "Assessment Builder" && builderDirtyRef.current) ||
+    window.confirm("You have unsaved changes in the assessment builder. Leave without saving?");
+  const navigate = (tab: string) => {
+    if (tab !== activeTab && !confirmLeaveBuilder()) return;
+    setActiveTab(tab);
+  };
+  const openBuilder = (id: string | null) => {
+    if (!confirmLeaveBuilder()) return;
+    setBuilderTarget({ id, nonce: Date.now() });
+    setActiveTab("Assessment Builder");
+  };
 
-  // Shield integrity controls (initial values come from Settings → Examination rules)
-  const examDefaults = readPreferences(user.id).examDefaults;
-  const [shieldWebcam, setShieldWebcam] = useState(examDefaults.webcam);
-  const [shieldMic, setShieldMic] = useState(examDefaults.mic);
-  const [shieldLockdown, setShieldLockdown] = useState(examDefaults.lockdown);
-  const [shieldFace, setShieldFace] = useState(examDefaults.face);
-  const [shieldGaze, setShieldGaze] = useState(examDefaults.gaze);
-  const [shieldTab, setShieldTab] = useState(examDefaults.tab);
-  const [shieldBehavior, setShieldBehavior] = useState(examDefaults.behavior);
-
-  // Resume & Attempt controls states
-  const [shieldAllowResume, setShieldAllowResume] = useState(examDefaults.allowResume);
-  const [shieldMaxResumeCount, setShieldMaxResumeCount] = useState(examDefaults.maxResumeCount);
-  const [shieldResumeTimeWindow, setShieldResumeTimeWindow] = useState(examDefaults.resumeTimeWindow);
-  const [shieldResumeAfterDisconnect, setShieldResumeAfterDisconnect] = useState(examDefaults.resumeAfterDisconnect);
-  const [shieldResumeAfterCrash, setShieldResumeAfterCrash] = useState(examDefaults.resumeAfterCrash);
-  const [shieldResumeAfterLogout, setShieldResumeAfterLogout] = useState(examDefaults.resumeAfterLogout);
-  const [shieldRetakeAllowed, setShieldRetakeAllowed] = useState(false);
-  const [shieldRetakeDate, setShieldRetakeDate] = useState("");
-  const [shieldAttemptLock, setShieldAttemptLock] = useState(examDefaults.attemptLock);
-  const [shieldLateSubmission, setShieldLateSubmission] = useState(examDefaults.lateSubmission);
-
-  // Re-apply defaults when they're changed in Settings while this portal is open.
-  const { prefs: livePrefs } = usePreferences(user.id);
-  const isFirstDefaultsRun = React.useRef(true);
-  useEffect(() => {
-    if (isFirstDefaultsRun.current) {
-      isFirstDefaultsRun.current = false;
-      return;
-    }
-    const d = livePrefs.examDefaults;
-    setShieldWebcam(d.webcam);
-    setShieldMic(d.mic);
-    setShieldLockdown(d.lockdown);
-    setShieldFace(d.face);
-    setShieldGaze(d.gaze);
-    setShieldTab(d.tab);
-    setShieldBehavior(d.behavior);
-    setShieldAllowResume(d.allowResume);
-    setShieldMaxResumeCount(d.maxResumeCount);
-    setShieldResumeTimeWindow(d.resumeTimeWindow);
-    setShieldResumeAfterDisconnect(d.resumeAfterDisconnect);
-    setShieldResumeAfterCrash(d.resumeAfterCrash);
-    setShieldResumeAfterLogout(d.resumeAfterLogout);
-    setShieldAttemptLock(d.attemptLock);
-    setShieldLateSubmission(d.lateSubmission);
-  }, [livePrefs.examDefaults]);
+  // Attempt reset (only when the assessment allows it)
+  const [resetTarget, setResetTarget] = useState<any | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
 
   // Active proctoring selection
   const [proctorId, setProctorId] = useState<string | null>(null);
@@ -436,81 +413,6 @@ export default function FacultyPortalView({ user, session, handleLogout }: Facul
     }
   }, [auditId, user.id]);
 
-  // Handle assessment submission
-  const handleCreateAssessment = async () => {
-    if (!newTitle.trim()) {
-      toast.error("Please enter a title.");
-      return;
-    }
-    if (questions.length === 0) {
-      toast.error("Please add at least one question.");
-      return;
-    }
-
-    try {
-      const payload = {
-        title: newTitle,
-        description: newDesc,
-        duration: Number(newDuration),
-        gradingScheme: newGrading,
-        availabilityStart: newStart || null,
-        availabilityEnd: newEnd || null,
-        attemptLimit: Number(newLimit),
-        webcamMonitoring: shieldWebcam,
-        microphoneAnalysis: shieldMic,
-        browserLockdown: shieldLockdown,
-        faceVerification: shieldFace,
-        gazeTracking: shieldGaze,
-        tabSwitchDetection: shieldTab,
-        behavioralAnalysis: shieldBehavior,
-        allowResume: shieldAllowResume,
-        maxResumeCount: Number(shieldMaxResumeCount),
-        resumeTimeWindow: Number(shieldResumeTimeWindow),
-        resumeAfterDisconnect: shieldResumeAfterDisconnect,
-        resumeAfterCrash: shieldResumeAfterCrash,
-        resumeAfterLogout: shieldResumeAfterLogout,
-        retakeAllowed: shieldRetakeAllowed,
-        retakeDate: shieldRetakeDate || null,
-        attemptLock: shieldAttemptLock,
-        lateSubmissionAllowed: shieldLateSubmission,
-        questions: questions.map((q) => ({
-          type: q.type,
-          text: q.text,
-          options: q.options,
-          correctAnswer: q.correctAnswer,
-          points: Number(q.points),
-          difficulty: q.difficulty,
-          learningOutcome: q.learningOutcome
-        }))
-      };
-
-      const res = await fetch("/api/assessments", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-user-id": user.id,
-          "x-user-role": "faculty"
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        toast.success("Assessment created successfully!");
-        // Reset states
-        setNewTitle("");
-        setNewDesc("");
-        setQuestions([]);
-        fetchAssessments();
-        setActiveTab("Overview");
-      } else {
-        const data = await res.json();
-        toast.error(data.message || "Failed to create assessment.");
-      }
-    } catch (err) {
-      toast.error("An error occurred.");
-    }
-  };
-
   const handleLoadSample = async () => {
     try {
       const payload = {
@@ -592,45 +494,35 @@ export default function FacultyPortalView({ user, session, handleLogout }: Facul
         toast.success("Assessment published successfully! Students can now access it.");
         fetchAssessments();
       } else {
-        toast.error("Failed to publish.");
+        const body = await res.json().catch(() => ({}));
+        toast.error(body.message || "Failed to publish.", {
+          action: { label: "Open in builder", onClick: () => openBuilder(id) },
+        });
       }
     } catch {
       toast.error("An error occurred.");
     }
   };
 
-  // Add a new empty question to the list
-  const addQuestion = (type: string) => {
-    setQuestions([
-      ...questions,
-      {
-        id: Math.random().toString(),
-        type,
-        text: "",
-        options: type === "multiple-choice" ? ["Option A", "Option B", "Option C", "Option D"] : null,
-        correctAnswer: "",
-        points: 5,
-        difficulty: "medium",
-        learningOutcome: "CLO-" + (questions.length + 1)
-      }
-    ]);
-  };
-
-  // Update question option content
-  const updateOption = (qIdx: number, optIdx: number, val: string) => {
-    const updated = [...questions];
-    updated[qIdx].options[optIdx] = val;
-    setQuestions(updated);
-  };
-
-  const updateQuestionField = (idx: number, field: string, val: any) => {
-    const updated = [...questions];
-    updated[idx][field] = val;
-    setQuestions(updated);
-  };
-
-  const removeQuestion = (idx: number) => {
-    setQuestions(questions.filter((_, i) => i !== idx));
+  const handleResetAttempt = async () => {
+    if (!resetTarget) return;
+    setIsResetting(true);
+    try {
+      const res = await apiFetch(`/api/assessments/attempts/${resetTarget.id}/reset`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Reset by faculty from the Evaluation Queue" }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || "Could not reset the attempt.");
+      toast.success(`Attempt reset. ${resetTarget.studentName} can start the assessment again.`);
+      setSelectedAttempt(null);
+      setEvalAttempts((list) => list.map((a: any) => (a.id === resetTarget.id ? { ...a, status: "reset" } : a)));
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setIsResetting(false);
+      setResetTarget(null);
+    }
   };
 
   // Select attempt to evaluate
@@ -734,7 +626,7 @@ export default function FacultyPortalView({ user, session, handleLogout }: Facul
       <PortalSidebar
         portalLabel="Faculty portal"
         active={activeTab}
-        onSelect={setActiveTab}
+        onSelect={navigate}
         user={{ name: user?.name, email: user?.email, image: user?.image, roleLabel: "Faculty" }}
         onSignOut={handleLogout}
         onOpenSettings={() => openSettings()}
@@ -825,7 +717,7 @@ export default function FacultyPortalView({ user, session, handleLogout }: Facul
                   </button>
                   <button
                     type="button"
-                    onClick={() => setActiveTab("Assessment Builder")}
+                    onClick={() => openBuilder(null)}
                     className="bg-[#1a1917] text-white hover:bg-black px-4 py-2 rounded-xl text-xs font-semibold shadow transition-all cursor-pointer flex items-center gap-2"
                   >
                     <PlusCircle className="size-4" /> Create Assessment
@@ -916,6 +808,13 @@ export default function FacultyPortalView({ user, session, handleLogout }: Facul
                               })()}
                             </td>
                             <td className="py-4 text-right space-x-2">
+                              <button
+                                type="button"
+                                onClick={() => openBuilder(a.id)}
+                                className="text-xs font-bold text-[#1a1917] bg-white border border-[#dedede] hover:bg-[#f6f6f6] px-3 py-1.5 rounded-lg shadow-sm transition cursor-pointer"
+                              >
+                                Edit
+                              </button>
                               {!a.published && (
                                 <button
                                   type="button"
@@ -948,387 +847,14 @@ export default function FacultyPortalView({ user, session, handleLogout }: Facul
 
           {/* TAB 2: ASSESSMENT BUILDER */}
           {activeTab === "Assessment Builder" && (
-            <div className="space-y-6">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight">Assessment Builder</h1>
-                <p className="text-xs text-[#8a8a8a]">Design a secure, proctored assessment with custom grading configurations.</p>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left Form: Parameters */}
-                <div className="lg:col-span-2 space-y-6">
-                  <div className="bg-white border border-[#dedede] rounded-2xl p-5 shadow-sm space-y-4">
-                    <h3 className="text-base font-bold border-b pb-2">1. Exam Information</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-[#676767]">Assessment Title</label>
-                        <input
-                          type="text"
-                          value={newTitle}
-                          onChange={(e) => setNewTitle(e.target.value)}
-                          placeholder="e.g. Midterm Algorithms Design"
-                          className="bg-[#f6f6f6] border border-[#dedede]/60 rounded-xl py-2 px-3 text-[13.5px] placeholder:text-[#a2a2a2]"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-[#676767]">Duration (minutes)</label>
-                        <input
-                          type="number"
-                          value={newDuration}
-                          onChange={(e) => setNewDuration(e.target.value)}
-                          placeholder="60"
-                          className="bg-[#f6f6f6] border border-[#dedede]/60 rounded-xl py-2 px-3 text-[13.5px]"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-[#676767]">Grading Scheme</label>
-                        <select
-                          value={newGrading}
-                          onChange={(e) => setNewGrading(e.target.value)}
-                          className="bg-[#f6f6f6] border border-[#dedede]/60 rounded-xl py-2 px-3 text-[13.5px]"
-                        >
-                          <option value="points">Points System</option>
-                          <option value="percentage">Percentage Scale</option>
-                        </select>
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-[#676767]">Attempts Allowed</label>
-                        <input
-                          type="number"
-                          value={newLimit}
-                          onChange={(e) => setNewLimit(e.target.value)}
-                          placeholder="1"
-                          className="bg-[#f6f6f6] border border-[#dedede]/60 rounded-xl py-2 px-3 text-[13.5px]"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-[#676767]">Availability Start</label>
-                        <input
-                          type="datetime-local"
-                          value={newStart}
-                          onChange={(e) => setNewStart(e.target.value)}
-                          className="bg-[#f6f6f6] border border-[#dedede]/60 rounded-xl py-2 px-3 text-[13.5px]"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-[#676767]">Availability End</label>
-                        <input
-                          type="datetime-local"
-                          value={newEnd}
-                          onChange={(e) => setNewEnd(e.target.value)}
-                          className="bg-[#f6f6f6] border border-[#dedede]/60 rounded-xl py-2 px-3 text-[13.5px]"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-[#676767]">Description / Instructions</label>
-                      <textarea
-                        rows={2}
-                        value={newDesc}
-                        onChange={(e) => setNewDesc(e.target.value)}
-                        placeholder="Provide dynamic information or instructions..."
-                        className="bg-[#f6f6f6] border border-[#dedede]/60 rounded-xl py-2 px-3 text-[13.5px]"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Question Builder */}
-                  <div className="bg-white border border-[#dedede] rounded-2xl p-5 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between border-b pb-2">
-                      <h3 className="text-base font-bold">2. Configure Questions</h3>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => addQuestion("multiple-choice")}
-                          className="bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-[11px] font-bold px-3 py-1.5 rounded-lg transition cursor-pointer"
-                        >
-                          + Multiple Choice
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => addQuestion("descriptive")}
-                          className="bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-[11px] font-bold px-3 py-1.5 rounded-lg transition cursor-pointer"
-                        >
-                          + Descriptive
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => addQuestion("coding")}
-                          className="bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-[11px] font-bold px-3 py-1.5 rounded-lg transition cursor-pointer"
-                        >
-                          + Coding
-                        </button>
-                      </div>
-                    </div>
-
-                    {questions.length === 0 ? (
-                      <div className="py-8 text-center text-xs text-[#8a8a8a] border border-dashed rounded-xl">
-                        No questions added yet. Choose a question format above.
-                      </div>
-                    ) : (
-                      <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
-                        {questions.map((q, idx) => (
-                          <div key={q.id} className="border border-[#dedede]/60 rounded-xl p-4 bg-[#f6f6f6]/20 relative space-y-3">
-                            <button
-                              type="button"
-                              onClick={() => removeQuestion(idx)}
-                              className="absolute top-3 right-3 text-red-500 hover:text-red-700 cursor-pointer"
-                            >
-                              <Trash2 className="size-4" />
-                            </button>
-
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-white bg-zinc-800 rounded px-2 py-0.5 capitalize">
-                                Q{idx + 1}: {q.type}
-                              </span>
-                            </div>
-
-                            <div className="flex flex-col gap-1">
-                              <label className="text-[11px] font-bold text-[#8a8a8a]">Question Text</label>
-                              <input
-                                type="text"
-                                value={q.text}
-                                onChange={(e) => updateQuestionField(idx, "text", e.target.value)}
-                                placeholder="Enter question content..."
-                                className="bg-white border border-[#dedede]/60 rounded-lg py-1.5 px-3 text-[13px]"
-                              />
-                            </div>
-
-                            {q.type === "multiple-choice" && (
-                              <div className="grid grid-cols-2 gap-2 mt-2">
-                                {q.options.map((opt: string, oIdx: number) => (
-                                  <div key={oIdx} className="flex items-center gap-1 bg-white border rounded-lg px-2 py-1">
-                                    <span className="text-xs font-bold">{String.fromCharCode(65 + oIdx)}:</span>
-                                    <input
-                                      type="text"
-                                      value={opt}
-                                      onChange={(e) => updateOption(idx, oIdx, e.target.value)}
-                                      className="w-full bg-transparent border-none text-xs outline-none"
-                                    />
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-
-                            {/* Answer config & grading metadata */}
-                            <div className="grid grid-cols-3 gap-2">
-                              <div className="flex flex-col gap-1">
-                                <label className="text-[10px] font-bold text-[#8a8a8a]">Correct Answer / Verification Key</label>
-                                <input
-                                  type="text"
-                                  value={q.correctAnswer}
-                                  onChange={(e) => updateQuestionField(idx, "correctAnswer", e.target.value)}
-                                  placeholder="Answer text/option..."
-                                  className="bg-white border border-[#dedede]/60 rounded-lg py-1 px-2 text-[12px]"
-                                />
-                              </div>
-                              <div className="flex flex-col gap-1">
-                                <label className="text-[10px] font-bold text-[#8a8a8a]">Points</label>
-                                <input
-                                  type="number"
-                                  value={q.points}
-                                  onChange={(e) => updateQuestionField(idx, "points", e.target.value)}
-                                  className="bg-white border border-[#dedede]/60 rounded-lg py-1 px-2 text-[12px]"
-                                />
-                              </div>
-                              <div className="flex flex-col gap-1">
-                                <label className="text-[10px] font-bold text-[#8a8a8a]">Difficulty</label>
-                                <select
-                                  value={q.difficulty}
-                                  onChange={(e) => updateQuestionField(idx, "difficulty", e.target.value)}
-                                  className="bg-white border border-[#dedede]/60 rounded-lg py-1 px-2 text-[12px]"
-                                >
-                                  <option value="easy">Easy</option>
-                                  <option value="medium">Medium</option>
-                                  <option value="hard">Hard</option>
-                                </select>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Right Form: Integrity Settings */}
-                <div className="space-y-6">
-                  <div className="bg-white border border-[#dedede] rounded-2xl p-5 shadow-sm space-y-4">
-                    <h3 className="text-base font-bold border-b pb-2 flex items-center gap-2">
-                      <Shield className="size-5 text-[#b2b2b2]" /> Integrity Controls
-                    </h3>
-                    <p className="text-xs text-[#8a8a8a]">Configure advanced AI security settings for students during this examination.</p>
-
-                    <div className="space-y-3.5 pt-2">
-                      {[
-                        { state: shieldWebcam, setter: setShieldWebcam, title: "Webcam Monitoring", desc: "Periodic face analysis & anomaly detection" },
-                        { state: shieldMic, setter: setShieldMic, title: "Microphone Analysis", desc: "Background noise & voice detection" },
-                        { state: shieldLockdown, setter: setShieldLockdown, title: "Browser Lockdown", desc: "Block copy-paste, print screen & tools" },
-                        { state: shieldFace, setter: setShieldFace, title: "Face Verification", desc: "Ensure student identity matches registration" },
-                        { state: shieldGaze, setter: setShieldGaze, title: "Gaze Tracking", desc: "Detect looking away from screen" },
-                        { state: shieldTab, setter: setShieldTab, title: "Tab-Switch Detection", desc: "Instantly flag and count tab switches" },
-                        { state: shieldBehavior, setter: setShieldBehavior, title: "AI Behavior Analysis", desc: "Flags nervous behavior or multiple people" }
-                      ].map((item, idx) => (
-                        <div key={idx} className="flex items-start justify-between gap-3 p-2 border rounded-xl hover:bg-[#f6f6f6]/50 transition">
-                          <div>
-                            <span className="text-xs font-bold text-[#1a1917] block">{item.title}</span>
-                            <span className="text-[10px] text-[#8a8a8a] leading-none mt-0.5">{item.desc}</span>
-                          </div>
-                          <input
-                            type="checkbox"
-                            checked={item.state}
-                            onChange={(e) => item.setter(e.target.checked)}
-                            className="size-4.5 rounded text-[#1a1917] border-gray-300 focus:ring-[#b2b2b2] mt-1 cursor-pointer"
-                          />
-                        </div>
-                      ))}
-                    </div>
-
-                    <h3 className="text-base font-bold border-b pb-2 pt-4 flex items-center gap-2">
-                      <Clock className="size-5 text-[#b2b2b2]" /> Resume & Attempt Rules
-                    </h3>
-                    <div className="space-y-3.5 pt-2 text-xs">
-                      {/* Allow Resume */}
-                      <div className="flex items-start justify-between gap-3 p-2 border rounded-xl hover:bg-[#f6f6f6]/50 transition">
-                        <div>
-                          <span className="font-bold text-[#1a1917] block">Allow Resume</span>
-                          <span className="text-[10px] text-[#8a8a8a] leading-none mt-0.5">Allow candidates to resume exam if disconnected</span>
-                        </div>
-                        <input
-                          type="checkbox"
-                          checked={shieldAllowResume}
-                          onChange={(e) => setShieldAllowResume(e.target.checked)}
-                          className="size-4.5 rounded text-[#1a1917] border-gray-300 focus:ring-[#b2b2b2] mt-1 cursor-pointer"
-                        />
-                      </div>
-
-                      {shieldAllowResume && (
-                        <div className="pl-4 space-y-3 border-l-2 border-[#dedede] ml-2">
-                          <div className="flex flex-col gap-1">
-                            <label className="font-bold text-[#676767]">Maximum Resume Count</label>
-                            <input
-                              type="number"
-                              value={shieldMaxResumeCount}
-                              onChange={(e) => setShieldMaxResumeCount(e.target.value)}
-                              className="bg-[#f6f6f6] border border-[#dedede]/60 rounded-xl py-1.5 px-3 text-[12px] focus:outline-none"
-                            />
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <label className="font-bold text-[#676767]">Resume Time Window (minutes)</label>
-                            <input
-                              type="number"
-                              value={shieldResumeTimeWindow}
-                              onChange={(e) => setShieldResumeTimeWindow(e.target.value)}
-                              className="bg-[#f6f6f6] border border-[#dedede]/60 rounded-xl py-1.5 px-3 text-[12px] focus:outline-none"
-                            />
-                          </div>
-
-                          <div className="flex items-start justify-between gap-3 hover:bg-[#f6f6f6]/30 p-1.5 rounded-lg">
-                            <div>
-                              <span className="font-semibold text-[#1a1917] block">Resume After Disconnect</span>
-                            </div>
-                            <input
-                              type="checkbox"
-                              checked={shieldResumeAfterDisconnect}
-                              onChange={(e) => setShieldResumeAfterDisconnect(e.target.checked)}
-                              className="size-4 rounded text-[#1a1917] border-gray-300 mt-1 cursor-pointer"
-                            />
-                          </div>
-
-                          <div className="flex items-start justify-between gap-3 hover:bg-[#f6f6f6]/30 p-1.5 rounded-lg">
-                            <div>
-                              <span className="font-semibold text-[#1a1917] block">Resume After Browser Crash</span>
-                            </div>
-                            <input
-                              type="checkbox"
-                              checked={shieldResumeAfterCrash}
-                              onChange={(e) => setShieldResumeAfterCrash(e.target.checked)}
-                              className="size-4 rounded text-[#1a1917] border-gray-300 mt-1 cursor-pointer"
-                            />
-                          </div>
-
-                          <div className="flex items-start justify-between gap-3 hover:bg-[#f6f6f6]/30 p-1.5 rounded-lg">
-                            <div>
-                              <span className="font-semibold text-[#1a1917] block">Resume After Logout</span>
-                            </div>
-                            <input
-                              type="checkbox"
-                              checked={shieldResumeAfterLogout}
-                              onChange={(e) => setShieldResumeAfterLogout(e.target.checked)}
-                              className="size-4 rounded text-[#1a1917] border-gray-300 mt-1 cursor-pointer"
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Retake settings */}
-                      <div className="flex items-start justify-between gap-3 p-2 border rounded-xl hover:bg-[#f6f6f6]/50 transition">
-                        <div>
-                          <span className="font-bold text-[#1a1917] block">Retake Allowed</span>
-                          <span className="text-[10px] text-[#8a8a8a] leading-none mt-0.5">Allows student to start a new attempt if failed</span>
-                        </div>
-                        <input
-                          type="checkbox"
-                          checked={shieldRetakeAllowed}
-                          onChange={(e) => setShieldRetakeAllowed(e.target.checked)}
-                          className="size-4.5 rounded text-[#1a1917] border-gray-300 focus:ring-[#b2b2b2] mt-1 cursor-pointer"
-                        />
-                      </div>
-
-                      {shieldRetakeAllowed && (
-                        <div className="pl-4 space-y-3 border-l-2 border-[#dedede] ml-2">
-                          <div className="flex flex-col gap-1">
-                            <label className="font-bold text-[#676767]">Retake Date</label>
-                            <input
-                              type="datetime-local"
-                              value={shieldRetakeDate}
-                              onChange={(e) => setShieldRetakeDate(e.target.value)}
-                              className="bg-[#f6f6f6] border border-[#dedede]/60 rounded-xl py-1.5 px-3 text-[12px] focus:outline-none"
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Attempt Lock */}
-                      <div className="flex items-start justify-between gap-3 p-2 border rounded-xl hover:bg-[#f6f6f6]/50 transition">
-                        <div>
-                          <span className="font-bold text-[#1a1917] block">Attempt Lock</span>
-                          <span className="text-[10px] text-[#8a8a8a] leading-none mt-0.5">Instantly lock all active/new exam entries</span>
-                        </div>
-                        <input
-                          type="checkbox"
-                          checked={shieldAttemptLock}
-                          onChange={(e) => setShieldAttemptLock(e.target.checked)}
-                          className="size-4.5 rounded text-[#1a1917] border-gray-300 focus:ring-[#b2b2b2] mt-1 cursor-pointer"
-                        />
-                      </div>
-
-                      {/* Late Submission */}
-                      <div className="flex items-start justify-between gap-3 p-2 border rounded-xl hover:bg-[#f6f6f6]/50 transition">
-                        <div>
-                          <span className="font-bold text-[#1a1917] block">Late Submission Allowed</span>
-                          <span className="text-[10px] text-[#8a8a8a] leading-none mt-0.5">Allow submissions after availability date ends</span>
-                        </div>
-                        <input
-                          type="checkbox"
-                          checked={shieldLateSubmission}
-                          onChange={(e) => setShieldLateSubmission(e.target.checked)}
-                          className="size-4.5 rounded text-[#1a1917] border-gray-300 focus:ring-[#b2b2b2] mt-1 cursor-pointer"
-                        />
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleCreateAssessment}
-                      className="w-full bg-[#1a1917] hover:bg-black text-white py-3 rounded-xl text-xs font-semibold shadow-lg transition-all cursor-pointer"
-                    >
-                      Save & Create Draft
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <AssessmentBuilder
+              key={`${builderTarget.id ?? "new"}-${builderTarget.nonce}`}
+              user={user}
+              assessmentId={builderTarget.id}
+              onNavigate={(tab) => navigate(tab)}
+              onChanged={fetchAssessments}
+              onDirtyChange={handleBuilderDirty}
+            />
           )}
 
           {/* TAB 3: PROCTORING */}
@@ -1929,6 +1455,16 @@ Reason (recorded in the audit timeline):`,
                     </button>
                     <h3 className="text-lg font-bold">Evaluating: {selectedAttempt.studentName}</h3>
                     <div className="flex gap-2">
+                      {assessments.find((x) => x.id === (selectedAttempt.assessmentId || evalId))?.attemptResetAllowed &&
+                        selectedAttempt.status !== "reset" && (
+                          <button
+                            type="button"
+                            onClick={() => setResetTarget(selectedAttempt)}
+                            className="bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold px-4 py-2 rounded-xl transition cursor-pointer shadow-sm"
+                          >
+                            Reset attempt
+                          </button>
+                        )}
                       <button
                         type="button"
                         onClick={handleReevaluate}
@@ -2486,6 +2022,24 @@ Reason (recorded in the audit timeline):`,
 
           {/* TAB 8: AI ASSISTANT (verified faculty only — enforced server-side) */}
           {activeTab === "AI Assistant" && <FacultyAIChat user={user} />}
+
+          <AlertDialog open={!!resetTarget} onOpenChange={(o) => !o && setResetTarget(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reset {resetTarget?.studentName}'s attempt?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  The attempt is voided and the student can start the assessment again. Its answers, recording and proctoring
+                  evidence are kept for audit, and the student is notified.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isResetting}>Cancel</AlertDialogCancel>
+                <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" disabled={isResetting} onClick={() => void handleResetAttempt()}>
+                  {isResetting ? "Resetting…" : "Reset attempt"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </main>
       </div>
     </SidebarProvider>

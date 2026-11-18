@@ -55,11 +55,9 @@ export function SettingsView({ canEdit }: { canEdit: boolean }) {
 
   const dirty = !!s && !!original && JSON.stringify(s) !== JSON.stringify(original);
   const total = s ? WEIGHTS.reduce((n, w) => n + (s.weights[w.key] || 0), 0) : 0;
-  // Backend may store weights as fractions (0–1) or integers; pick a slider scale that fits.
-  const maxOriginal = original ? Math.max(0, ...WEIGHTS.map((w) => original.weights[w.key] || 0)) : 0;
-  const fractional = maxOriginal > 0 && maxOriginal <= 1;
-  const sliderMax = fractional ? 1 : Math.max(10, Math.ceil(maxOriginal * 1.5));
-  const sliderStep = fractional ? 0.05 : 1;
+  // Weights are integers on a 0–100 scale (defaults 40/30/15/10/5); the score uses each one's share of the total.
+  const sliderMax = 100;
+  const sliderStep = 1;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5 overflow-y-auto h-full">

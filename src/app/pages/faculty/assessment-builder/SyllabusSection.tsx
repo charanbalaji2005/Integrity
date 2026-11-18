@@ -306,7 +306,7 @@ function SyllabusPicker({ course, reloadCourse }: { course: CourseDetail; reload
           {units.length === 0 ? (
             <div className="rounded-xl border border-dashed border-zinc-200 px-4 py-6 text-center text-[12.5px] text-zinc-500">
               No units yet.{" "}
-              <button type="button" className="font-semibold text-zinc-900 underline-offset-2 hover:underline" onClick={() => setEditOpen(true)}>
+              <button type="button" className="text-[12.5px] font-semibold text-zinc-900 underline-offset-2 hover:underline" onClick={() => setEditOpen(true)}>
                 Add units and topics
               </button>
             </div>
@@ -683,7 +683,7 @@ function MaterialsManager({ course, reloadCourse }: { course: CourseDetail; relo
         <UploadCloud className="size-6 text-zinc-400" />
         <p className="text-[12.5px] text-zinc-600">
           Drag and drop files here, or{" "}
-          <button type="button" className="font-semibold text-zinc-900 underline-offset-2 hover:underline" onClick={() => fileRef.current?.click()}>
+          <button type="button" className="text-[12.5px] font-semibold text-zinc-900 underline-offset-2 hover:underline" onClick={() => fileRef.current?.click()}>
             browse files
           </button>
         </p>
