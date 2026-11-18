@@ -1,0 +1,955 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  name               String
+  email              String    @unique
+  emailVerified      Boolean   @default(false)
+  image              String?
+  role               String    @default("user")
+  status             String    @default("active")
+  suspendedUntil     DateTime?
+  institutionName    String?
+  department         String?
+  academicId         String?
+  phoneNumber        String?
+  designation        String?
+  bio                String?
+  joiningDate        DateTime? @default(now())
+  twoFactorEnabled   Boolean   @default(false)
+  rollNumber         String?
+  semester           String?
+  branch             String?
+  section            String?
+  subjects           String?
+  accessLevel        String?
+  managedDepartments String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  failedLoginAttempts       Int       @default(0)
+  lockedUntil               DateTime?
+  changePasswordAtNextLogin Boolean   @default(false)
+  riskScore                 Int       @default(0)
+
+  // Institutional enrolment verification (college ID / fee receipt reviewed by an admin).
+  // "unverified" | "pending" | "approved" | "rejected". Students may only take exams when "approved".
+  verificationStatus String    @default("unverified")
+  verifiedAt         DateTime?
+
+  sessions             Session[]
+  accounts             Account[]
+  assessments          Assessment[]
+  attempts             AssessmentAttempt[]
+  sentMessages         ChatMessage[]         @relation("SentMessages")
+  receivedMessages     ChatMessage[]         @relation("ReceivedMessages")
+  sentChatRequests     ChatRequest[]         @relation("SentRequests")
+  receivedChatRequests ChatRequest[]         @relation("ReceivedRequests")
+  passwordHistory      PasswordHistory[]
+  studentVerifications StudentVerification[]
+  plagiarismDocuments  PlagiarismDocument[]
+  plagiarismReports    PlagiarismReport[]
+  supportStaff         SupportStaff?
+  courses              Course[]
+
+  @@map("users")
+}
+
+model PasswordHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  hash      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_histories")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("verifications")
+}
+
+model UserLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String // "login", "register", "logout", "suspend", "unsuspend", "delete", "temp_suspend"
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@map("user_logs")
+}
+
+model Assessment {
+  id                    String    @id @default(cuid())
+  title                 String
+  description           String?
+  duration              Int // in minutes
+  availabilityStart     DateTime?
+  availabilityEnd       DateTime?
+  attemptLimit          Int       @default(1)
+  gradingScheme         String    @default("points")
+  institutionName       String
+  facultyName           String
+  facultyId             String
+  faculty               User      @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  published             Boolean   @default(false)
+  webcamMonitoring      Boolean   @default(false)
+  microphoneAnalysis    Boolean   @default(false)
+  browserLockdown       Boolean   @default(false)
+  faceVerification      Boolean   @default(false)
+  gazeTracking          Boolean   @default(false)
+  tabSwitchDetection    Boolean   @default(false)
+  behavioralAnalysis    Boolean   @default(false)
+  // Resume Settings
+  allowResume           Boolean   @default(true)
+  maxResumeCount        Int       @default(3)
+  resumeTimeWindow      Int       @default(15) // in minutes
+  resumeAfterDisconnect Boolean   @default(true)
+  resumeAfterCrash      Boolean   @default(true)
+  resumeAfterLogout     Boolean   @default(false)
+
+  // Attempt Settings
+  retakeAllowed         Boolean   @default(false)
+  retakeDate            DateTime?
+  attemptLock           Boolean   @default(false)
+  lateSubmissionAllowed Boolean   @default(false)
+
+  // Builder v2 (all optional / defaulted so existing assessments keep working)
+  assessmentType                String    @default("quiz") // "quiz" | "midterm" | "final" | "practice"
+  totalMarks                    Float?
+  passingMarks                  Float?
+  randomizeQuestions            Boolean   @default(false)
+  randomizeOptions              Boolean   @default(false)
+  negativeMarking               Boolean   @default(false)
+  negativeMarkValue             Float     @default(0) // default deduction per wrong objective answer
+  autoSubmitOnExpiry            Boolean   @default(true)
+  attemptResetAllowed           Boolean   @default(false)
+  /// JSON: granular integrity settings (see assessment-builder schema). Master toggles above stay authoritative.
+  integrityConfig               String?
+  courseId                      String?
+  course                        Course?   @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  syllabusId                    String?
+  syllabus                      Syllabus? @relation(fields: [syllabusId], references: [id], onDelete: SetNull)
+  // Student access to attached learning materials
+  materialsAccessible           Boolean   @default(false)
+  materialsDownloadable         Boolean   @default(false)
+  materialsRestrictedDuringExam Boolean   @default(true)
+  materialsAvailableFrom        DateTime?
+  materialsAvailableUntil       DateTime?
+
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  questions Question[]
+  attempts  AssessmentAttempt[]
+  topics    AssessmentTopic[]
+  materials AssessmentMaterial[]
+
+  @@index([courseId])
+  @@map("assessments")
+}
+
+model Question {
+  id              String       @id @default(cuid())
+  assessmentId    String
+  assessment      Assessment   @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  type            String // "multiple-choice" | "descriptive" | "coding" | "file-upload"
+  text            String
+  options         String? // JSON string for MCQ options (e.g. ["A", "B", "C"])
+  correctAnswer   String?
+  points          Float        @default(1)
+  difficulty      String       @default("medium") // "easy" | "medium" | "hard"
+  learningOutcome String?
+  order           Int          @default(0)
+  negativeMarks   Float        @default(0)
+  explanation     String?
+  /// JSON: type-specific settings (coding limits/test cases, blanks, image ids, …)
+  config          String?
+  topicId         String?
+  topic           CourseTopic? @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  answers         Answer[]
+
+  @@index([assessmentId, order])
+  @@map("questions")
+}
+
+model AssessmentAttempt {
+  id                 String     @id @default(cuid())
+  assessmentId       String
+  assessment         Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  studentId          String
+  student            User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentName        String
+  status             String // "started" | "submitted" | "graded"
+  score              Float?
+  integrityScore     Float      @default(100)
+  progress           Float      @default(0)
+  plagiarismScore    Float?
+  aiDetectionScore   Float?
+  similarityScore    Float?
+  writingScore       Float?
+  grammarScore       Float?
+  citationScore      Float?
+  riskLevel          String?
+  evaluationSummary  String?
+  recommendations    String?
+  evaluationEvidence String?
+  modelUsed          String?
+  evaluationTime     Int?
+  certificateNumber  String?    @unique
+  verificationCode   String?    @unique
+  startedAt          DateTime   @default(now())
+  submittedAt        DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  answers            Answer[]
+
+  // Resume state parameters
+  resumeCount          Int    @default(0)
+  currentQuestionIndex Int    @default(0)
+  timeLeft             Int? // remaining seconds
+  markedQuestions      String @default("[]") // JSON string of question IDs
+  visitedQuestions     String @default("[]") // JSON string of question IDs
+
+  // Live telemetry parameters
+  networkQuality     String                    @default("Excellent") // "Excellent" | "Good" | "Slow" | "Poor" | "Offline"
+  networkLatency     Int                       @default(0)
+  faceStatus         String                    @default("Detected") // "Detected" | "Missing" | "Multiple Faces" | "Looking Left" | etc.
+  backgroundNoise    String                    @default("Quiet") // "Quiet" | "Noise Detected"
+  isOnline           Boolean                   @default(true)
+  violations         ViolationAlert[]
+  proctoringStatus   String                    @default("NORMAL")
+  warningCount       Int                       @default(0)
+  proctoringSummary  String?
+  proctoringTimeline ProctoringTimelineEvent[]
+
+  // Durable AI proctoring agent state (JSON). Lets any backend instance
+  // rebuild the temporal/evidence context after a restart or reconnect.
+  proctoringState String?
+  lastHeartbeatAt DateTime?
+  lastFrameAt     DateTime?
+
+  // Continuous session recording (every segment, not only violations)
+  recordingSegments ExamRecordingSegment[]
+
+  // Post-exam feedback collected by the feedback agent (one per attempt)
+  examFeedback ExamFeedback?
+
+  @@map("assessment_attempts")
+}
+
+/// Feedback a student gives the post-exam feedback agent after submitting.
+model ExamFeedback {
+  id               String            @id @default(cuid())
+  attemptId        String            @unique
+  attempt          AssessmentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  assessmentId     String
+  assessmentTitle  String
+  studentId        String
+  studentName      String
+  studentEmail     String?
+  overallRating    Int // 1-5
+  difficulty       String // "easy" | "just-right" | "hard"
+  proctoringRating Int // 1-5 (how fair/comfortable the proctoring felt)
+  technicalIssues  String            @default("[]") // JSON array of issue tags
+  comments         String?
+  sentiment        String // "positive" | "neutral" | "negative" (derived)
+  createdAt        DateTime          @default(now())
+
+  @@index([assessmentId])
+  @@index([createdAt])
+  @@map("exam_feedback")
+}
+
+model Answer {
+  id               String            @id @default(cuid())
+  attemptId        String
+  attempt          AssessmentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId       String
+  question         Question          @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  response         String // Student response text
+  aiGrade          Float?
+  aiConfidence     Float?
+  manualGrade      Float?
+  feedback         String?
+  isFlagged        Boolean           @default(false)
+  aiEvaluation     String? // JSON details of evaluations
+  overrideStatus   String            @default("none") // "none" | "accepted" | "modified" | "rejected"
+  originalResponse String? // Original text before modification (audit log backup)
+  embedding        String? // Embedding vector stored as JSON string
+
+  @@map("answers")
+}
+
+model EvaluationAuditTrail {
+  id                   String   @id @default(cuid())
+  timestamp            DateTime @default(now())
+  answerId             String
+  modelUsed            String
+  aiScore              Float
+  confidenceScore      Float
+  facultyModifications String? // JSON detailing what manual inputs were made
+  originalAnswer       String
+  finalAnswerScore     Float
+  similarityResults    String // JSON detailing similarity analysis
+  riskAnalysisResults  String // JSON detailing risk results
+  overrideStatus       String // "accepted" | "modified" | "rejected" | "auto"
+  facultyId            String?
+  facultyName          String?
+
+  @@map("evaluation_audit_trails")
+}
+
+model ViolationAlert {
+  id          String            @id @default(cuid())
+  attemptId   String
+  attempt     AssessmentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  type        String // "tab-switch" | "gaze-away" | "multiple-faces" | "no-face" | "talking"
+  timestamp   DateTime          @default(now())
+  severity    String // "low" | "medium" | "high"
+  description String
+  riskScore   Int               @default(0)
+  evidence    String? // Base64 selfie/photo or details
+  browser     String?
+  os          String?
+  network     String?
+  latency     Int?
+  device      String?
+
+  @@map("violation_alerts")
+}
+
+model SupportTicket {
+  id                String                @id @default(cuid())
+  referenceNumber   String                @unique
+  studentId         String
+  studentName       String
+  email             String
+  institutionName   String?
+  category          String // support category key, e.g. "camera_microphone"
+  subcategory       String?
+  affectedModule    String                @default("other")
+  title             String                @default("Support request")
+  priority          String                @default("P3") // "P1" | "P2" | "P3" | "P4"
+  severity          String?
+  urgency           String                @default("medium") // "low" | "medium" | "high" | "critical"
+  blocksExam        Boolean               @default(false)
+  department        String                @default("Technical Support")
+  status            String                @default("unassigned") // unassigned | pending_acceptance | in_progress | waiting_student | escalated | resolved
+  ownershipType     String                @default("AI") // "AI" | "HUMAN"
+  description       String
+  queuePosition     Int                   @default(1)
+  estimatedWait     Int                   @default(5) // in minutes
+  assignedAgentId   String?
+  assignedAgentName String?
+  resolutionDetails String?
+  examAttemptId     String?
+  reassignmentCount Int                   @default(0)
+  reopenCount       Int                   @default(0)
+  rating            Int?
+  ratingComment     String?
+  firstResponseAt   DateTime?
+  humanAcceptedAt   DateTime?
+  resolvedAt        DateTime?
+  lastMessageAt     DateTime              @default(now())
+  waitingSince      DateTime?
+  embedding         String? // semantic index for AI Support retrieval
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  messages          TicketMessage[]
+  assignments       TicketAssignment[]
+  aiAnalyses        SupportAIAnalysis[]
+  portalContext     StudentPortalContext?
+  internalNotes     SupportInternalNote[]
+  auditLogs         SupportAuditLog[]
+  attachments       SupportAttachment[]
+
+  @@index([status, priority])
+  @@index([studentId, createdAt])
+  @@index([assignedAgentId, status])
+  @@map("support_tickets")
+}
+
+model TicketMessage {
+  id          String              @id @default(cuid())
+  ticketId    String
+  ticket      SupportTicket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  senderId    String
+  senderName  String
+  senderRole  String // "user" | "support" | "admin" | "ai" | "system"
+  messageType String              @default("text") // "text" | "system" | "handoff"
+  content     String
+  createdAt   DateTime            @default(now())
+  attachments SupportAttachment[]
+
+  @@index([ticketId, createdAt])
+  @@map("ticket_messages")
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  description String
+  type        String // "announcement" | "assessment" | "report" | "system" | "message"
+  priority    String   @default("medium") // "low" | "medium" | "high"
+  read        Boolean  @default(false)
+  senderName  String?
+  senderRole  String?
+  createdAt   DateTime @default(now())
+
+  @@map("notifications")
+}
+
+model ChatMessage {
+  id            String   @id @default(cuid())
+  senderId      String
+  senderName    String
+  senderRole    String
+  content       String
+  type          String // "college" | "class" | "private"
+  department    String?
+  semester      String?
+  section       String?
+  recipientId   String?
+  attachments   String? // JSON string of string[] for file URLs
+  parentId      String?
+  isDeleted     Boolean  @default(false)
+  reactions     String? // JSON string of [{emoji, userId, userName}]
+  readBy        String? // JSON string of string[] userIds
+  isPinned      Boolean  @default(false)
+  forwardedFrom String? // name or identifier
+  createdAt     DateTime @default(now())
+
+  sender    User  @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient User? @relation("ReceivedMessages", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+}
+
+model ChatRequest {
+  id         String   @id @default(cuid())
+  studentId  String
+  facultyId  String
+  subject    String
+  reason     String
+  attachment String?
+  status     String   @default("pending") // "pending" | "approved" | "rejected" | "closed"
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  student User @relation("SentRequests", fields: [studentId], references: [id], onDelete: Cascade)
+  faculty User @relation("ReceivedRequests", fields: [facultyId], references: [id], onDelete: Cascade)
+
+  @@map("chat_requests")
+}
+
+model SecurityAlert {
+  id          String   @id @default(cuid())
+  userId      String?
+  agentName   String // "Authentication Agent", "Session Agent", etc.
+  eventType   String // "failed_login", "impossible_travel", "devtools_usage", etc.
+  riskScore   Int
+  severity    String // "low", "medium", "high", "critical"
+  description String
+  ipAddress   String?
+  userAgent   String?
+  status      String   @default("pending") // "pending", "resolved", "ignored"
+  actionTaken String? // "logged", "notified", "locked", "suspended"
+  createdAt   DateTime @default(now())
+
+  @@map("security_alerts")
+}
+
+model EvaluationJob {
+  id         String   @id @default(cuid())
+  attemptId  String   @unique
+  status     String   @default("pending") // "pending" | "processing" | "completed" | "failed"
+  retryCount Int      @default(0)
+  maxRetries Int      @default(3)
+  errorLog   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("evaluation_jobs")
+}
+
+model ProctoringTimelineEvent {
+  id        String            @id @default(cuid())
+  attemptId String
+  attempt   AssessmentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  event     String // e.g. "Exam Started", "Looking Away", "Warning 1", "Phone Detected"
+  timestamp DateTime          @default(now())
+  details   String?
+
+  @@map("proctoring_timeline_events")
+}
+
+/// A student's proof of enrolment (college ID card or institution fee receipt),
+/// reviewed by an administrator before the student may take examinations.
+model StudentVerification {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentType    String // "college_id" | "fee_receipt"
+  fileName        String
+  mimeType        String
+  fileSize        Int
+  fileData        Bytes
+  institutionName String?
+  rollNumber      String?
+  status          String    @default("pending") // "pending" | "approved" | "rejected"
+  reviewNote      String?
+  reviewedById    String?
+  reviewedByName  String?
+  reviewedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId])
+  @@map("student_verifications")
+}
+
+/// Versioned proctoring rule configuration. The newest version is active;
+/// older rows are kept so changes can be audited and rolled back.
+model ProctoringAgentConfig {
+  version   Int      @id
+  rules     Json
+  updatedBy String?
+  updatedAt DateTime @default(now())
+
+  @@map("proctoring_agent_config")
+}
+
+/// Append-only audit trail of proctoring configuration changes.
+model ProctoringConfigAudit {
+  id         Int      @id @default(autoincrement())
+  version    Int
+  actorId    String
+  actorEmail String?
+  action     String
+  changes    Json
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("proctoring_config_audit")
+}
+
+/// One self-contained, playable segment of the continuous exam recording.
+/// The file lives in object/disk storage; this row is its tamper-evident index.
+model ExamRecordingSegment {
+  id         String            @id @default(cuid())
+  attemptId  String
+  attempt    AssessmentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  sequence   Int
+  storageKey String
+  mimeType   String
+  sizeBytes  Int
+  sha256     String
+  hasAudio   Boolean           @default(false)
+  startedAt  DateTime
+  durationMs Int
+  createdAt  DateTime          @default(now())
+
+  @@unique([attemptId, sequence])
+  @@index([attemptId, startedAt])
+  @@map("exam_recording_segments")
+}
+
+/// A document stored in the institutional plagiarism repository (Turnitin's
+/// "student paper repository"). Later checks are compared against it.
+model PlagiarismDocument {
+  id              String                  @id @default(cuid())
+  ownerId         String
+  owner           User                    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title           String
+  filename        String?
+  text            String
+  contentHash     String
+  wordCount       Int
+  institutionName String?
+  createdAt       DateTime                @default(now())
+  fingerprints    PlagiarismFingerprint[]
+
+  @@index([contentHash])
+  @@index([ownerId])
+  @@map("plagiarism_documents")
+}
+
+/// Winnowed 5-gram fingerprint hashes for fast candidate lookup.
+model PlagiarismFingerprint {
+  hash       Int
+  documentId String
+  document   PlagiarismDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@id([hash, documentId])
+  @@index([hash])
+  @@map("plagiarism_fingerprints")
+}
+
+/// A saved similarity report (full JSON result) so it can be reopened.
+model PlagiarismReport {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title      String
+  filename   String?
+  similarity Float
+  band       String
+  result     String
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("plagiarism_reports")
+}
+
+/// Binary file stored in the database (same durable approach as StudentVerification,
+/// so uploads survive ephemeral hosting disks). Referenced by syllabi, materials and question images.
+model StoredFile {
+  id        String   @id @default(cuid())
+  ownerId   String
+  purpose   String // "syllabus" | "material" | "question-image"
+  fileName  String
+  mimeType  String
+  sizeBytes Int
+  sha256    String
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  syllabi   Syllabus[]
+  materials CourseMaterial[]
+
+  @@index([ownerId, sha256])
+  @@map("stored_files")
+}
+
+model Course {
+  id              String   @id @default(cuid())
+  code            String
+  name            String
+  subject         String?
+  department      String?
+  institutionName String
+  ownerId         String
+  owner           User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  syllabi     Syllabus[]
+  units       CourseUnit[]
+  materials   CourseMaterial[]
+  assessments Assessment[]
+
+  @@unique([institutionName, code])
+  @@map("courses")
+}
+
+model Syllabus {
+  id            String      @id @default(cuid())
+  courseId      String
+  course        Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title         String
+  isOfficial    Boolean     @default(true)
+  status        String      @default("processing") // "processing" | "ready" | "failed" | "manual"
+  statusMessage String?
+  fileId        String?
+  file          StoredFile? @relation(fields: [fileId], references: [id], onDelete: SetNull)
+  uploadedById  String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  units       CourseUnit[]
+  assessments Assessment[]
+
+  @@index([courseId])
+  @@map("syllabi")
+}
+
+model CourseUnit {
+  id         String        @id @default(cuid())
+  courseId   String
+  course     Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  syllabusId String
+  syllabus   Syllabus      @relation(fields: [syllabusId], references: [id], onDelete: Cascade)
+  number     Int
+  title      String
+  order      Int           @default(0)
+  topics     CourseTopic[]
+
+  @@index([syllabusId, order])
+  @@map("course_units")
+}
+
+model CourseTopic {
+  id          String            @id @default(cuid())
+  unitId      String
+  unit        CourseUnit        @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  title       String
+  order       Int               @default(0)
+  questions   Question[]
+  assessments AssessmentTopic[]
+
+  @@index([unitId, order])
+  @@map("course_topics")
+}
+
+model CourseMaterial {
+  id           String               @id @default(cuid())
+  courseId     String
+  course       Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  kind         String // "pdf" | "notes" | "slides" | "reference" | "video" | "link"
+  title        String
+  description  String?
+  url          String? // video / external resource links
+  fileId       String?
+  file         StoredFile?          @relation(fields: [fileId], references: [id], onDelete: SetNull)
+  uploadedById String
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  assessments  AssessmentMaterial[]
+
+  @@index([courseId])
+  @@map("course_materials")
+}
+
+model AssessmentMaterial {
+  assessmentId    String
+  assessment      Assessment     @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  materialId      String
+  material        CourseMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  /// Permitted as reference material during the examination itself.
+  permittedInExam Boolean        @default(false)
+
+  @@id([assessmentId, materialId])
+  @@map("assessment_materials")
+}
+
+model AssessmentTopic {
+  assessmentId String
+  assessment   Assessment  @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  topicId      String
+  topic        CourseTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@id([assessmentId, topicId])
+  @@map("assessment_topics")
+}
+
+/// Support representative profile used by the assignment engine.
+model SupportStaff {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  supportRole        String             @default("agent") // "agent" | "supervisor"
+  availability       String             @default("available") // available | busy | away | offline | on_break | unavailable
+  isOnline           Boolean            @default(false)
+  lastSeenAt         DateTime?
+  assignmentsEnabled Boolean            @default(true)
+  maxActiveTickets   Int                @default(8)
+  expertise          String             @default("[]") // JSON array of category keys
+  workingHours       String? // JSON { timezone, days, start, end }
+  lastAssignedAt     DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  assignments        TicketAssignment[]
+
+  @@map("support_staff")
+}
+
+model TicketAssignment {
+  id                 String        @id @default(cuid())
+  ticketId           String
+  ticket             SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  staffId            String
+  staff              SupportStaff  @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  status             String        @default("pending") // pending | accepted | timed_out | reassigned | released
+  assignmentScore    Float?
+  scoreBreakdown     String? // JSON
+  assignedAt         DateTime      @default(now())
+  acceptedAt         DateTime?
+  timeoutAt          DateTime?
+  endedAt            DateTime?
+  reassignmentReason String?
+  assignedById       String? // null = automatic engine
+
+  @@index([ticketId, assignedAt])
+  @@index([staffId, status])
+  @@index([status, timeoutAt])
+  @@map("ticket_assignments")
+}
+
+model SupportAIAnalysis {
+  id                  String        @id @default(cuid())
+  ticketId            String
+  ticket              SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  category            String
+  subcategory         String?
+  priority            String
+  priorityReason      String
+  severity            String
+  issueSummary        String
+  suggestedDepartment String
+  requiredExpertise   String        @default("[]")
+  recommendedStaffId  String?
+  confidence          Float
+  blocksExam          Boolean       @default(false)
+  recurring           Boolean       @default(false)
+  generatedBy         String        @default("rules") // "llm" | "rules"
+  createdAt           DateTime      @default(now())
+
+  @@index([ticketId, createdAt])
+  @@map("support_ai_analyses")
+}
+
+model StudentPortalContext {
+  id                    String        @id @default(cuid())
+  studentId             String
+  ticketId              String        @unique
+  ticket                SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  sourcePortal          String        @default("Student Portal")
+  sourcePath            String?
+  sourceModule          String?
+  examinationSessionId  String?
+  browserInformation    String? // JSON
+  deviceInformation     String? // JSON
+  connectionInformation String? // JSON
+  diagnosticMetadata    String? // JSON (full client diagnostics object)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@map("student_portal_contexts")
+}
+
+model SupportInternalNote {
+  id        String        @id @default(cuid())
+  ticketId  String
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  staffId   String
+  staffName String
+  kind      String        @default("note") // "note" | "verified_finding"
+  content   String
+  createdAt DateTime      @default(now())
+
+  @@index([ticketId, createdAt])
+  @@map("support_internal_notes")
+}
+
+model SupportAuditLog {
+  id            String         @id @default(cuid())
+  actorId       String?
+  actorName     String?
+  ticketId      String?
+  ticket        SupportTicket? @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  action        String
+  previousValue String?
+  newValue      String?
+  createdAt     DateTime       @default(now())
+
+  @@index([ticketId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("support_audit_logs")
+}
+
+/// Private support attachments (stored in the database, served via short-lived signed URLs).
+model SupportAttachment {
+  id         String         @id @default(cuid())
+  ticketId   String
+  ticket     SupportTicket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  messageId  String?
+  message    TicketMessage? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  uploaderId String
+  fileName   String
+  mimeType   String
+  size       Int
+  data       Bytes
+  createdAt  DateTime       @default(now())
+
+  @@index([ticketId])
+  @@map("support_attachments")
+}
+
+model KnowledgeArticle {
+  id         String   @id @default(cuid())
+  title      String
+  category   String
+  summary    String
+  body       String
+  visibility String   @default("public") // "public" | "internal"
+  tags       String   @default("[]")
+  builtIn    Boolean  @default(false)
+  authorId   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([category])
+  @@map("knowledge_articles")
+}
+
+/// Singleton row (id = "default") with assignment-engine configuration.
+model SupportSettings {
+  id                       String   @id @default("default")
+  weights                  String // JSON { workload, expertise, availability, performance, recency }
+  acceptanceTimeoutSeconds Int      @default(180)
+  allowOfflineAssignment   Boolean  @default(false)
+  reassignAlertThreshold   Int      @default(2)
+  updatedAt                DateTime @updatedAt
+
+  @@map("support_settings")
+}
+
+/// Atomic per-year counter for human-friendly ticket references (AS-2026-00001).
+model SupportCounter {
+  year  Int @id
+  value Int @default(0)
+
+  @@map("support_counters")
+}

@@ -1,0 +1,82 @@
+# Render Blueprint Specification for IntegrityOS
+# Deploys Frontend (Static Site) and Backend (Node Web Service) as two separate cloud instances.
+
+services:
+  # ============================================================================
+  # 1. BACKEND INSTANCE: Node.js / Express Web Service
+  # ============================================================================
+  - type: web
+    name: integrityos-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    region: oregon
+    buildCommand: npm install --include=dev && npx prisma generate && (npx prisma db push --accept-data-loss || true) && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        value: postgresql://neondb_owner:npg_34TmZcoVwsCN@ep-autumn-rain-bbbc2wdc-pooler.c-15.us-east-1.aws.neon.tech/neondb?sslmode=require
+      - key: NEON_DATABASE_URL
+        value: postgresql://neondb_owner:npg_34TmZcoVwsCN@ep-autumn-rain-bbbc2wdc-pooler.c-15.us-east-1.aws.neon.tech/neondb?sslmode=require
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      - key: BETTER_AUTH_URL
+        fromService:
+          type: web
+          name: integrityos-backend
+          property: host
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: integrityos-frontend
+          property: host
+      - key: ADMIN_EMAIL
+        value: charanbalajineelampalli752005@gmail.com
+      - key: ADMIN_PASSWORD
+        value: "752006"
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_CHAT_MODEL
+        value: openai/gpt-oss-120b
+      - key: LLM_PROVIDER
+        value: groq
+      - key: SMTP_USER
+        value: neelampallicharanbalaji14@gmail.com
+      - key: SMTP_PASS
+        value: hwipnbegmfaoxfju
+
+  # ============================================================================
+  # 2. FRONTEND INSTANCE: React / Vite Static Web Service
+  # ============================================================================
+  - type: web
+    name: integrityos-frontend
+    runtime: static
+    rootDir: .
+    plan: free
+    region: oregon
+    buildCommand: npm install --include=dev && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: integrityos-backend
+          property: host
+      - key: VITE_SOCKET_URL
+        fromService:
+          type: web
+          name: integrityos-backend
+          property: host
+      - key: VITE_GROQ_API_KEY
+        sync: false
+      - key: VITE_GROQ_MODEL
+        value: openai/gpt-oss-120b
