@@ -260,13 +260,21 @@ export async function seedDatabase(shouldExit = false) {
 		for (const acc of ACCOUNTS) {
 			console.log(`  ${acc.role.padEnd(8)} ${acc.email.padEnd(34)} ${acc.password}`);
 		}
-		await prisma.$disconnect();
-		process.exit(0);
+		if (shouldExit) {
+			await prisma.$disconnect();
+			process.exit(0);
+		}
 	} catch (error) {
 		console.error("[Seed] Failed:", error);
-		await prisma.$disconnect();
-		process.exit(1);
+		if (shouldExit) {
+			await prisma.$disconnect();
+			process.exit(1);
+		}
 	}
 }
 
-seedDatabase(true);
+// Only run automatically when executed directly (e.g. npm run seed)
+const isDirectExecution = process.argv[1] && (process.argv[1].endsWith("seed.ts") || process.argv[1].endsWith("seed.js"));
+if (isDirectExecution) {
+	seedDatabase(true);
+}

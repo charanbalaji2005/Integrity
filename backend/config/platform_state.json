@@ -17,46 +17,46 @@
   },
   "selfHealingLogs": [
     {
-      "id": "sh-ahbdksz",
-      "timestamp": "2026-11-18T02:03:56.884Z",
-      "component": "Self-Healing Orchestrator",
-      "action": "Self-Healing background service successfully initialized.",
-      "status": "MONITOR"
+      "id": "sh-9v6nldm",
+      "timestamp": "2026-11-18T02:18:40.661Z",
+      "component": "Ollama Local LLM Agent",
+      "action": "Local API ping timed out. Restarted local background instance.",
+      "status": "HEALED"
     },
     {
-      "id": "sh-9cf2rdg",
-      "timestamp": "2026-11-18T02:03:46.889Z",
+      "id": "sh-gbwc386",
+      "timestamp": "2026-11-18T02:13:40.584Z",
       "component": "WebSocket Proctoring Stream",
       "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
       "status": "HEALED"
     },
     {
-      "id": "sh-6tfz1pp",
-      "timestamp": "2026-11-18T02:02:46.871Z",
+      "id": "sh-toli1r6",
+      "timestamp": "2026-11-18T02:13:10.575Z",
+      "component": "Ollama Local LLM Agent",
+      "action": "Local API ping timed out. Restarted local background instance.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-k86bpyb",
+      "timestamp": "2026-11-18T02:05:10.480Z",
+      "component": "Ollama Local LLM Agent",
+      "action": "Local API ping timed out. Restarted local background instance.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-nuf8lqp",
+      "timestamp": "2026-11-18T02:03:10.456Z",
       "component": "WebSocket Proctoring Stream",
       "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
       "status": "HEALED"
     },
     {
-      "id": "sh-ddrz9zj",
-      "timestamp": "2026-11-18T02:02:16.862Z",
+      "id": "sh-nkl2dsd",
+      "timestamp": "2026-11-18T02:02:10.434Z",
       "component": "WebSocket Proctoring Stream",
       "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
       "status": "HEALED"
-    },
-    {
-      "id": "sh-hw5hzkv",
-      "timestamp": "2026-11-18T01:57:46.828Z",
-      "component": "Self-Healing Orchestrator",
-      "action": "Self-Healing background service successfully initialized.",
-      "status": "MONITOR"
-    },
-    {
-      "id": "sh-37e4ih0",
-      "timestamp": "2026-11-18T01:57:41.551Z",
-      "component": "Self-Healing Orchestrator",
-      "action": "Self-Healing background service successfully initialized.",
-      "status": "MONITOR"
     },
     {
       "id": "sh-0ddks3v",
