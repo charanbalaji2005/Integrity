@@ -33,7 +33,8 @@ import {
 import { cn } from "../../../components/ui/utils";
 import { AuthedImage } from "../../../components/assessment/protected-files";
 import { countBlanks, LANGUAGES, QUESTION_TYPES, typeMeta, type QuestionType } from "../../../components/assessment/question-meta";
-import { newKey, newQuestion, questionIssues, summarize, type BuilderForm, type QuestionForm } from "./builder-model";
+import { isCodingLanguage, newKey, newQuestion, questionIssues, summarize, type BuilderForm, type QuestionForm } from "./builder-model";
+import { CodingGradingSettings, ReferenceSolutionTester } from "./coding-settings";
 import { checkFile, FILE_RULES, uploadWithProgress, type Syllabus } from "./builder-api";
 import { CodeEditor, RichTextEditor } from "./editors";
 import { btn, Field, inputCls, NumberInput, Pill, SectionCard, textareaCls } from "./ui-kit";
@@ -529,7 +530,7 @@ function CodingEditor({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {LANGUAGES.map((l) => (
+              {LANGUAGES.filter((l) => isCodingLanguage(l.value)).map((l) => (
                 <SelectItem key={l.value} value={l.value}>
                   {l.label}
                 </SelectItem>
@@ -538,10 +539,10 @@ function CodingEditor({
           </Select>
         </Field>
         <Field label="Time limit" htmlFor={`${pid}-tl`}>
-          <NumberInput id={`${pid}-tl`} value={q.timeLimitMs} onChange={(v) => set("timeLimitMs", v ?? 2000)} min={100} max={60000} step={100} suffix="ms" />
+          <NumberInput id={`${pid}-tl`} value={q.timeLimitMs} onChange={(v) => set("timeLimitMs", v ?? 2000)} min={500} max={10000} step={100} suffix="ms" />
         </Field>
         <Field label="Memory limit" htmlFor={`${pid}-ml`}>
-          <NumberInput id={`${pid}-ml`} value={q.memoryLimitMb} onChange={(v) => set("memoryLimitMb", v ?? 256)} min={16} max={4096} step={16} suffix="MB" />
+          <NumberInput id={`${pid}-ml`} value={q.memoryLimitMb} onChange={(v) => set("memoryLimitMb", v ?? 256)} min={32} max={512} step={16} suffix="MB" />
         </Field>
       </div>
       <Field label="Starter code" htmlFor={`${pid}-starter`} hint="Pre-filled in the student's editor.">
@@ -582,9 +583,11 @@ function CodingEditor({
           </div>
         ))}
         <p className="text-[11.5px] text-zinc-500">
-          Code is graded by the AI-assisted evaluator against the reference solution and expected outputs; submissions are not executed in a sandbox.
+          Submissions are compiled and run against every test case in a sandbox; the rubric share is assessed by the AI evaluator against the reference solution. Low-confidence results are flagged for your review.
         </p>
+        <ReferenceSolutionTester q={q} />
       </div>
+      <CodingGradingSettings q={q} set={set} pid={pid} labelFor={(k) => LANGUAGES.find((l) => l.value === k)?.label ?? k} />
     </div>
   );
 }

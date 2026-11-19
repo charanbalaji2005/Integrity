@@ -11,14 +11,29 @@ const transporter = nodemailer.createTransport({
 
  
 
+export interface EmailAttachment {
+	filename: string;
+	content: string | Buffer;
+	contentType?: string;
+}
+
+/** True when real SMTP credentials are configured (the defaults are placeholders). */
+export function mailConfigured(): boolean {
+	return Boolean(env.SMTP_USER && env.SMTP_PASS && env.SMTP_PASS !== "disabled" && env.SMTP_USER.includes("@") && !env.SMTP_USER.endsWith(".local"));
+}
+
 export async function sendEmail({
 	to,
 	subject,
 	html,
+	text,
+	attachments,
 }: {
 	to: string;
 	subject: string;
 	html: string;
+	text?: string;
+	attachments?: EmailAttachment[];
 }) {
 	try {
 		const info = await transporter.sendMail({
@@ -26,6 +41,8 @@ export async function sendEmail({
 			to,
 			subject,
 			html,
+			...(text ? { text } : {}),
+			...(attachments?.length ? { attachments } : {}),
 		});
 		console.log(`[Email] Sent email to ${to}: messageId=${info.messageId}`);
 		return info;

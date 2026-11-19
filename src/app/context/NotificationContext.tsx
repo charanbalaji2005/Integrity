@@ -72,7 +72,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   const fetchNotifications = useCallback(async () => {
     if (!userId) return;
     try {
-      const res = await apiFetch("/api/notifications", {
+      const res = await apiFetch(`/api/notifications?portal=${encodeURIComponent(userRole)}`, {
         headers: {
           "x-user-id": userId,
           "x-user-role": userRole

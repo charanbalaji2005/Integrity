@@ -20,11 +20,7 @@ declare global {
  * Validates the Better Auth session from cookies or Authorization header.
  * Derives user identity strictly from the session and database, NEVER from client headers.
  */
-export async function requireAuth(
-	req: Request,
-	_res: Response,
-	next: NextFunction,
-): Promise<void> {
+export async function requireAuth(req: Request, _res: Response, next: NextFunction): Promise<void> {
 	try {
 		const sessionData = await auth.api.getSession({
 			headers: fromNodeHeaders(req.headers),
@@ -135,14 +131,17 @@ export function rateLimiter(options: RateLimitOptions) {
 	const ipRequests = new Map<string, { count: number; resetTime: number }>();
 
 	// Cleanup old entries every 5 minutes
-	setInterval(() => {
-		const now = Date.now();
-		for (const [ip, record] of ipRequests.entries()) {
-			if (now > record.resetTime) {
-				ipRequests.delete(ip);
+	setInterval(
+		() => {
+			const now = Date.now();
+			for (const [ip, record] of ipRequests.entries()) {
+				if (now > record.resetTime) {
+					ipRequests.delete(ip);
+				}
 			}
-		}
-	}, 5 * 60 * 1000);
+		},
+		5 * 60 * 1000,
+	);
 
 	return (req: Request, _res: Response, next: NextFunction): void => {
 		const ip =

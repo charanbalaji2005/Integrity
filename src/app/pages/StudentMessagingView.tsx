@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "motion/react";
 import type { Socket } from "socket.io-client";
 import { createAuthedSocket } from "../utils/socket-client";
 import { apiFetch } from "../utils/api-client";
+import { ChatAttachment } from "../components/study/MaterialAttachment";
+import { attachmentLabel } from "../components/study/materialActions";
 import { useProfile } from "../context/ProfileContext";
 import { toast } from "sonner";
 import {
@@ -609,7 +611,7 @@ export function StudentMessagingView() {
     const who = lastMessage.senderId === profile?.id ? "You" : (lastMessage.senderName || "").split(" ")[0];
     const body = lastMessage.isDeleted
       ? "This message was deleted"
-      : lastMessage.content || (lastMessage.attachments?.length ? `📎 ${lastMessage.attachments[0]}` : "");
+      : lastMessage.content || (lastMessage.attachments?.length ? `📎 ${attachmentLabel(lastMessage.attachments[0])}` : "");
     return { text: who ? `${who}: ${body}` : body, time: formatListTime(lastMessage.createdAt) };
   };
 
@@ -818,7 +820,7 @@ export function StudentMessagingView() {
   );
 
   return (
-    <div className="relative flex w-full h-[calc(100dvh-112px)] md:h-[calc(100dvh-128px)] min-h-[460px] overflow-hidden rounded-2xl border border-[#dedede] bg-white shadow-[0_4px_20px_rgba(128,128,128,0.06)]">
+    <div className="relative flex w-full h-full min-h-0 overflow-hidden bg-white">
       {isProfileIncomplete && (
         <div className="absolute inset-0 bg-neutral-900/60 backdrop-blur-md z-45 flex items-center justify-center p-4 overflow-y-auto">
           <motion.div
@@ -1162,7 +1164,7 @@ export function StudentMessagingView() {
                     <Pin className="size-4 text-[#676767] shrink-0" aria-hidden="true" />
                     <span className="min-w-0 flex-1">
                       <span className="block text-[11px] font-semibold text-[#1a1917]">Pinned message</span>
-                      <span className="block text-[12px] text-[#676767] truncate">{pinnedMessage.content || pinnedMessage.attachments?.[0]}</span>
+                      <span className="block text-[12px] text-[#676767] truncate">{pinnedMessage.content || (pinnedMessage.attachments?.[0] ? attachmentLabel(pinnedMessage.attachments[0]) : "")}</span>
                     </span>
                   </button>
                 )}
@@ -1296,15 +1298,7 @@ export function StudentMessagingView() {
                                 {msg.attachments && msg.attachments.length > 0 && (
                                   <div className="flex flex-col gap-1 mb-1 mt-0.5">
                                     {msg.attachments.map((file: string, aIdx: number) => (
-                                      <div
-                                        key={aIdx}
-                                        className={`flex items-center gap-2.5 rounded-md px-2.5 py-2 min-w-[200px] ${isMe ? "bg-[#d3e3d3]" : "bg-[#f4f4f4]"}`}
-                                      >
-                                        <div className="size-8 rounded bg-white/80 flex items-center justify-center shrink-0" aria-hidden="true">
-                                          <FileText className="size-4 text-[#676767]" />
-                                        </div>
-                                        <span className="text-[12.5px] font-medium text-[#1a1917] truncate">{file}</span>
-                                      </div>
+                                      <ChatAttachment key={aIdx} value={file} tone={isMe ? "mine" : "neutral"} />
                                     ))}
                                   </div>
                                 )}

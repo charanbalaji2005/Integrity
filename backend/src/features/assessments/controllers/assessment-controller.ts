@@ -19,6 +19,7 @@ import {
 import { orchestrateEvaluation } from "../services/evaluation-engine";
 import { facultyToNotify, getAssessmentResults } from "../services/results-service";
 import { getEmbedding } from "../services/vector-service";
+import { finalizeCodingForAttempt } from "../../coding/services/workspace-service";
 
 /**
  * Express v5 parameter helpers to avoid string/string[] type mismatch
@@ -649,6 +650,16 @@ export async function submitAttempt(req: Request, res: Response): Promise<void> 
 			progress: 100,
 		},
 	});
+
+	// Coding answers: freeze the newest code as an immutable version and queue
+	// sandboxed test execution + Vigil evaluation (marks land on the Answer later).
+	try {
+		const typed: Record<string, string> = {};
+		if (Array.isArray(answers)) for (const a of answers) if (a?.questionId && typeof a.response === "string") typed[a.questionId] = a.response;
+		await finalizeCodingForAttempt(attemptId, typed);
+	} catch (err) {
+		console.error("[submit] Coding finalisation failed:", err);
+	}
 
 	// Queue the evaluation job
 	await prisma.evaluationJob.create({

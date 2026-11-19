@@ -46,6 +46,24 @@ export const questionConfigSchema = z
 		testCases: z.array(testCaseSchema).max(50).optional(),
 		timeLimitMs: z.number().int().min(100).max(60000).optional(),
 		memoryLimitMb: z.number().int().min(16).max(4096).optional(),
+		/** Languages students may choose (c | cpp | java | python). Empty → all four. */
+		allowedLanguages: z.array(z.enum(["c", "cpp", "java", "python"])).max(4).optional(),
+		/** Share of the marks decided by test cases (rest: AI-scored rubric). */
+		testWeightPercent: z.number().min(0).max(100).optional(),
+		rubric: z
+			.array(
+				z.object({
+					criterion: z.string().min(1).max(80),
+					marks: z.number().min(0).max(1000),
+					description: z.string().max(500).optional(),
+				}),
+			)
+			.max(10)
+			.optional(),
+		/** How program output is compared with expected output. */
+		outputMatch: z.enum(["trim", "exact", "tokens"]).optional(),
+		/** Per-question override of the auto-grading confidence threshold (0–1). */
+		confidenceThreshold: z.number().min(0).max(1).optional(),
 		// fill in the blanks: accepted answers per blank
 		blanks: z
 			.array(z.array(z.string().max(300)).max(10))
@@ -600,6 +618,11 @@ export function validateQuestion(q: StoredQuestion, index: number): PublishIssue
 		case "coding":
 			if (!config.language)
 				issues.push({ field, message: `${label}: select a programming language.` });
+			else if (!["c", "cpp", "java", "python"].includes(config.language))
+				issues.push({
+					field,
+					message: `${label}: coding questions run in C, C++, Java or Python — pick one of these.`,
+				});
 			if (!q.correctAnswer?.trim() && !config.testCases?.length)
 				issues.push({
 					field,
@@ -673,6 +696,7 @@ export function sanitizeQuestionForStudent<Q extends StoredQuestion & Record<str
 					testCases: (config.testCases ?? []).filter((t) => !t.hidden),
 					timeLimitMs: config.timeLimitMs,
 					memoryLimitMb: config.memoryLimitMb,
+					allowedLanguages: config.allowedLanguages,
 				}
 			: {}),
 	};

@@ -4,6 +4,7 @@ import { type Socket, Server as SocketServer } from "socket.io";
 import { env } from "../config/env";
 import { prisma } from "../database";
 import { canSeeStudentSection, parseSections, sectionMonitorRoom } from "../utils/faculty-sections";
+import { isMultiPortalEmail } from "../utils/multi-portal";
 import { auth } from "./auth";
 
 /**
@@ -17,6 +18,7 @@ interface SocketIdentity {
 	department: string | null;
 	semester: string | null;
 	section: string | null;
+	email: string | null;
 }
 
 interface SocketData {
@@ -136,6 +138,7 @@ async function resolveSocketIdentity(
 		department: user.department ?? null,
 		semester: user.semester ?? null,
 		section: user.section ?? null,
+		email: user.email ?? null,
 	};
 }
 
@@ -174,7 +177,8 @@ async function canJoinRoom(identity: SocketIdentity, roomId: string): Promise<bo
 		const [, dept, sem, sec] = roomId.split(":");
 		if (role === "admin") return true;
 		// Faculty may only join class rooms of their assigned sections.
-		if (role === "faculty") return canSeeStudentSection({ role, section: identity.section }, sec);
+		if (role === "faculty")
+			return canSeeStudentSection({ role, section: identity.section, email: identity.email }, sec);
 		return (
 			dept === (identity.department ?? "") &&
 			sem === (identity.semester ?? "") &&
@@ -214,7 +218,10 @@ async function canJoinRoom(identity: SocketIdentity, roomId: string): Promise<bo
 		return (
 			role === "faculty" &&
 			attempt.assessment.facultyId === userId &&
-			canSeeStudentSection({ role, section: identity.section }, attempt.student?.section)
+			canSeeStudentSection(
+				{ role, section: identity.section, email: identity.email },
+				attempt.student?.section,
+			)
 		);
 	}
 
@@ -365,7 +372,11 @@ export function initSocketServer(server: HttpServer) {
 			// Faculty never join the whole-assessment monitor room: they are
 			// subscribed only to the sub-rooms of their assigned sections, so live
 			// telemetry for other sections' students is never delivered to them.
-			if (roomId.startsWith("assessment-proctoring-") && identity.role === "faculty") {
+			if (
+				roomId.startsWith("assessment-proctoring-") &&
+				identity.role === "faculty" &&
+				!isMultiPortalEmail(identity.email)
+			) {
 				const assessmentId = roomId.slice("assessment-proctoring-".length);
 				for (const section of parseSections(identity.section)) {
 					await socket.join(sectionMonitorRoom(assessmentId, section));
@@ -469,6 +480,19 @@ export function initSocketServer(server: HttpServer) {
 						socket.emit("error", { message: "You are not a member of this conversation." });
 						return;
 					}
+					// Faculty may only address their own sections, never the whole college.
+					if (
+						data.roomId === "college" &&
+						identity.role === "faculty" &&
+						!isMultiPortalEmail(identity.email)
+					) {
+						socket.emit("error", { message: "Faculty can only post to their own sections." });
+						return;
+					}
+					// Class metadata is derived from the (authorized) room key, not the payload.
+					const [, roomDept, roomSem, roomSec] = data.roomId.startsWith("class:")
+						? data.roomId.split(":")
+						: [];
 
 					const savedMessage = await prisma.chatMessage.create({
 						data: {
@@ -478,9 +502,9 @@ export function initSocketServer(server: HttpServer) {
 							senderRole: identity.role,
 							content: data.content.slice(0, 5000),
 							type: data.type,
-							department: data.department || null,
-							semester: data.semester || null,
-							section: data.section || null,
+							department: roomDept ?? null,
+							semester: roomSem ?? null,
+							section: roomSec ?? null,
 							recipientId: data.recipientId || null,
 							attachments: data.attachments ? JSON.stringify(data.attachments) : null,
 						},

@@ -80,6 +80,14 @@ const envSchema = z.object({
 	/** Optional: OpenAlex API key (free at openalex.org/settings/api) for a dedicated daily budget. */
 	OPENALEX_API_KEY: z.string().optional(),
 
+	// Vigil coding: isolated Judge0 execution service (infra/judge0). Student code
+	// is never executed by this server. Unset → code execution reports "unavailable".
+	JUDGE0_URL: z.string().url().optional(),
+	/** Must equal AUTHN_TOKEN in infra/judge0/judge0.conf. */
+	JUDGE0_AUTH_TOKEN: z.string().optional(),
+	/** Confidence below this (0–1) sends a coding evaluation to faculty review. */
+	CODE_EVAL_CONFIDENCE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
+
 	// Groq & OpenAI & Ollama LLMs
 	GROQ_API_KEY: z.string().optional(),
 	GROQ_CHAT_MODEL: z.string().default("openai/gpt-oss-120b"),

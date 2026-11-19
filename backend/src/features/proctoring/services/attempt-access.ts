@@ -16,6 +16,7 @@ export interface AccessUser {
 	role: string;
 	/** Faculty: comma-separated assigned sections. Used to scope student visibility. */
 	section?: string | null;
+	email?: string | null;
 }
 
 /** Proctoring statuses that end the live session for good. */

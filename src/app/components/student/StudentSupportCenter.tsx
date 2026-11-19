@@ -167,9 +167,9 @@ export function StudentSupportCenter({ user, onOpenDocs, initialContext }: Stude
   const showRightOnMobile = pane.kind !== "empty";
 
   return (
-    <div className="max-w-7xl mx-auto w-full space-y-4">
+    <div className="flex h-full min-h-0 w-full flex-col bg-white">
       {/* Page header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex shrink-0 flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#eee] px-4 sm:px-6 py-3">
         <div className="flex items-center gap-3">
           <span className="size-10 rounded-xl bg-[#1a1917] text-white flex items-center justify-center shrink-0" aria-hidden>
             <LifeBuoy className="size-5" />
@@ -185,10 +185,10 @@ export function StudentSupportCenter({ user, onOpenDocs, initialContext }: Stude
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(300px,380px)_1fr] gap-4 items-start">
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(300px,380px)_1fr]">
         {/* Ticket list */}
         <aside
-          className={`${card} flex flex-col lg:h-[calc(100vh-180px)] lg:min-h-[600px] overflow-hidden ${showRightOnMobile ? "hidden lg:flex" : "flex"}`}
+          className={`flex min-h-0 flex-col overflow-hidden border-r border-[#eee] bg-[#fafafa] ${showRightOnMobile ? "hidden lg:flex" : "flex"}`}
           aria-labelledby="support-my-tickets"
         >
           <div className="p-4 border-b border-[#eee] space-y-3">
@@ -322,7 +322,11 @@ export function StudentSupportCenter({ user, onOpenDocs, initialContext }: Stude
         </aside>
 
         {/* Right pane */}
-        <div className={`${showRightOnMobile ? "block" : "hidden lg:block"} min-w-0 space-y-4`}>
+        <div
+          className={`${showRightOnMobile ? "flex" : "hidden lg:flex"} min-h-0 min-w-0 flex-col ${
+            pane.kind === "ticket" ? "" : "space-y-4 overflow-y-auto p-4 sm:p-6"
+          }`}
+        >
           {pane.kind === "new" && (
             <>
               <KnowledgeBaseSearch onOpenDocs={onOpenDocs} />

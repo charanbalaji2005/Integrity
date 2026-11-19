@@ -3,6 +3,10 @@ import { motion, AnimatePresence } from "motion/react";
 import type { Socket } from "socket.io-client";
 import { createAuthedSocket } from "../utils/socket-client";
 import { useProfile } from "../context/ProfileContext";
+import { apiFetch } from "../utils/api-client";
+import { parseSectionList } from "../components/SectionPicker";
+import { ClassTargetPicker, departmentForSection } from "../components/study/ClassTargetPicker";
+import { ChatAttachment } from "../components/study/MaterialAttachment";
 import { toast } from "sonner";
 import {
   MessageSquare,
@@ -39,8 +43,25 @@ export function FacultyMessagingView() {
 
   // Dynamic Class Chat selection
   const [selectedDept, setSelectedDept] = useState("Computer Science & Engineering");
-  const [selectedSem, setSelectedSem] = useState("Semester 4");
-  const [selectedSec, setSelectedSec] = useState("Sec A");
+  const [selectedSem, setSelectedSem] = useState("Semester 1");
+  const [selectedSec, setSelectedSec] = useState("CSE-A");
+
+  // Faculty may only address their own sections; admins may pick any (null = unrestricted).
+  const isAdminUser = profile?.role === "admin";
+  const allowedSections = isAdminUser ? null : parseSectionList(profile?.section);
+  const allowedKey = allowedSections?.join(",") ?? "*";
+  useEffect(() => {
+    if (allowedSections && allowedSections.length && !allowedSections.includes(selectedSec)) {
+      setSelectedSec(allowedSections[0]);
+      setSelectedDept(departmentForSection(allowedSections[0]) || selectedDept);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allowedKey]);
+  const pickClass = (n: { section: string; semester: string; department: string }) => {
+    setSelectedSec(n.section);
+    setSelectedSem(n.semester);
+    if (n.department) setSelectedDept(n.department);
+  };
 
   // Data States
   const [messages, setMessages] = useState<any[]>([]);
@@ -54,9 +75,12 @@ export function FacultyMessagingView() {
   const [partnerTyping, setPartnerTyping] = useState<string | null>(null);
 
   // Announcement Composer State
-  const [annTarget, setAnnTarget] = useState<"college" | "class">("college");
+  const [annTarget, setAnnTarget] = useState<"college" | "class">("class");
   const [annContent, setAnnContent] = useState("");
   const [isSendingAnn, setIsSendingAnn] = useState(false);
+  // Real PDF attachment for announcements (published as a study material for that section)
+  const [annPdf, setAnnPdf] = useState<File | null>(null);
+  const annPdfInputRef = useRef<HTMLInputElement>(null);
 
   // Attachment (mock)
   const [fileAttachment, setFileAttachment] = useState<string | null>(null);
@@ -521,38 +545,52 @@ export function FacultyMessagingView() {
     }
   };
 
-  // Broadcast announcement helper
-  const handlePostAnnouncement = (e: React.FormEvent) => {
+  // Broadcast announcement (server-validated: faculty -> own sections only)
+  const handlePostAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!socket || !profile || !annContent.trim()) return;
-
+    if (!profile || isSendingAnn) return;
+    if (!annContent.trim()) {
+      toast.error("Write the announcement message first.");
+      return;
+    }
+    const target = isAdminUser ? annTarget : "class";
     setIsSendingAnn(true);
-
-    const roomId = annTarget === "college" ? "college" : `class:${selectedDept}:${selectedSem}:${selectedSec}`;
-    const payload: any = {
-      senderId: profile.id,
-      senderName: profile.name,
-      senderRole: profile.role,
-      content: annContent,
-      type: annTarget === "college" ? "college" : "class",
-      roomId,
-    };
-
-    if (annTarget === "class") {
-      payload.department = selectedDept;
-      payload.semester = selectedSem;
-      payload.section = selectedSec;
+    try {
+      // 1. Optional PDF -> publish it as a study material for this class
+      let materialId: string | undefined;
+      if (annPdf) {
+        const body = new FormData();
+        body.append("file", annPdf);
+        body.append("title", annPdf.name.replace(/\.pdf$/i, ""));
+        body.append("section", target === "college" ? "ALL" : selectedSec);
+        if (target === "class") body.append("semester", selectedSem);
+        const up = await apiFetch("/api/study-materials", { method: "POST", body });
+        const upData = await up.json().catch(() => ({}));
+        if (!up.ok) throw new Error(upData.message || "Could not upload the PDF.");
+        materialId = upData.data?.id;
+      }
+      // 2. The announcement itself
+      const res = await apiFetch("/api/chat/announcements", {
+        method: "POST",
+        body: JSON.stringify({
+          target,
+          content: annContent.trim(),
+          section: target === "class" ? selectedSec : undefined,
+          semester: target === "class" ? selectedSem : undefined,
+          materialId,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || `Broadcast failed (HTTP ${res.status}).`);
+      toast.success(data.message || "Announcement sent");
+      setAnnContent("");
+      setAnnPdf(null);
+      if (annPdfInputRef.current) annPdfInputRef.current.value = "";
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Broadcast failed.");
+    } finally {
+      setIsSendingAnn(false);
     }
-
-    if (fileAttachment) {
-      payload.attachments = [fileAttachment];
-    }
-
-    socket.emit("send-message", payload);
-    setAnnContent("");
-    setFileAttachment(null);
-    setIsSendingAnn(false);
-    toast.success("Announcement broadcast successfully!");
   };
 
   // Mock Upload helper
@@ -566,7 +604,7 @@ export function FacultyMessagingView() {
   const isProfileIncomplete = !profile?.name || !profile?.department || !profile?.section;
 
   return (
-    <div className="flex h-[calc(100vh-140px)] w-full gap-5 relative">
+    <div className="flex h-full min-h-0 w-full relative bg-white">
       {isProfileIncomplete && (
         <div className="absolute inset-0 bg-neutral-900/60 backdrop-blur-md z-45 flex items-center justify-center p-4">
           <motion.div
@@ -643,7 +681,7 @@ export function FacultyMessagingView() {
       )}
 
       {/* 1. Sidebar Panel */}
-      <div className="w-72 bg-white/70 backdrop-blur-md rounded-2xl border border-[#dedede]/50 flex flex-col p-4 shadow-sm select-none">
+      <div className="w-72 shrink-0 bg-[#fafafa] border-r border-[#dedede] flex flex-col p-4 select-none">
         <h3 className="text-base font-bold text-[#1a1917] mb-4 flex items-center gap-2">
           <MessageSquare className="size-4.5 text-[#8a8a8a]" />
           Faculty Communications
@@ -736,7 +774,7 @@ export function FacultyMessagingView() {
       </div>
 
       {/* 2. Main Chat Panel */}
-      <div className="flex-1 bg-white/70 backdrop-blur-md rounded-2xl border border-[#dedede]/50 flex flex-col shadow-sm overflow-hidden">
+      <div className="flex-1 min-w-0 bg-white flex flex-col overflow-hidden">
         
         {activeTab === "announcements" ? (
           // Announcements broadcast view
@@ -805,59 +843,34 @@ export function FacultyMessagingView() {
                     
                     <div>
                       <label className="text-[10px] font-bold text-[#8a8a8a] uppercase tracking-wider block mb-1">Target Audience</label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setAnnTarget("college")}
-                          className={`h-8 rounded-lg text-[10px] font-bold border transition-all ${
-                            annTarget === "college"
-                              ? "bg-[#1a1917] text-white border-transparent"
-                              : "bg-[#f6f6f6] text-[#676767] border-[#dedede]"
-                          }`}
-                        >
-                          📢 Entire College
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setAnnTarget("class")}
-                          className={`h-8 rounded-lg text-[10px] font-bold border transition-all ${
-                            annTarget === "class"
-                              ? "bg-[#1a1917] text-white border-transparent"
-                              : "bg-[#f6f6f6] text-[#676767] border-[#dedede]"
-                          }`}
-                        >
-                          🏫 Target Section
-                        </button>
-                      </div>
+                      {isAdminUser ? (
+                        <div className="grid grid-cols-2 gap-2">
+                          {(["college", "class"] as const).map((t) => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => setAnnTarget(t)}
+                              className={`h-8 rounded-lg text-[10px] font-bold border transition-all ${
+                                annTarget === t ? "bg-[#1a1917] text-white border-transparent" : "bg-[#f6f6f6] text-[#676767] border-[#dedede]"
+                              }`}
+                            >
+                              {t === "college" ? "📢 Entire College" : "🏫 One Section"}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-[#676767]">
+                          You can broadcast to your own sections:{" "}
+                          <span className="font-semibold text-[#1a1917]">{allowedSections?.join(", ") || "none assigned"}</span>
+                        </p>
+                      )}
                     </div>
 
-                    {annTarget === "class" && (
-                      <div className="space-y-2.5 bg-[#f6f6f6]/60 p-3 rounded-xl border border-[#dedede]/45">
-                        <span className="text-[9px] font-bold text-[#8a8a8a] uppercase tracking-wider block">Audience Filters</span>
-                        <div className="grid grid-cols-2 gap-2">
-                          <Input
-                            placeholder="Sem 4"
-                            value={selectedSem}
-                            onChange={(e) => setSelectedSem(e.target.value)}
-                            className="h-8 text-[10px] font-medium bg-white"
-                          />
-                          <Input
-                            placeholder="Sec A"
-                            value={selectedSec}
-                            onChange={(e) => setSelectedSec(e.target.value)}
-                            className="h-8 text-[10px] font-medium bg-white"
-                          />
-                        </div>
-                        <select
-                          value={selectedDept}
-                          onChange={(e) => setSelectedDept(e.target.value)}
-                          className="w-full h-8 rounded-lg border border-[#dedede] bg-white text-[10px] font-medium px-2 outline-none"
-                        >
-                          <option value="Computer Science & Engineering">Computer Science & Engineering</option>
-                          <option value="Electronics & Communications">Electronics & Communications</option>
-                          <option value="Electrical & Electronics Engineering">Electrical & Electronics Engineering</option>
-                          <option value="Mechanical Engineering">Mechanical Engineering</option>
-                        </select>
+                    {(!isAdminUser || annTarget === "class") && (
+                      <div className="space-y-2 bg-[#f6f6f6]/60 p-3 rounded-xl border border-[#dedede]/45">
+                        <span className="text-[9px] font-bold text-[#8a8a8a] uppercase tracking-wider block">Send to</span>
+                        <ClassTargetPicker allowedSections={allowedSections} section={selectedSec} semester={selectedSem} onChange={pickClass} />
+                        <p className="text-[10px] text-[#8a8a8a]">{selectedDept}</p>
                       </div>
                     )}
 
@@ -872,26 +885,55 @@ export function FacultyMessagingView() {
                       />
                     </div>
 
-                    {fileAttachment && (
+                    {annPdf && (
                       <div className="flex items-center justify-between px-2.5 py-1 bg-[#f6f6f6] border border-[#dedede]/40 rounded-lg text-[10px] text-[#1a1917] font-semibold">
-                        <span className="truncate">{fileAttachment}</span>
-                        <button type="button" onClick={() => setFileAttachment(null)} className="text-rose-500 hover:underline ml-2">Remove</button>
+                        <span className="truncate">📄 {annPdf.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAnnPdf(null);
+                            if (annPdfInputRef.current) annPdfInputRef.current.value = "";
+                          }}
+                          className="text-rose-500 hover:underline ml-2"
+                        >
+                          Remove
+                        </button>
                       </div>
                     )}
                   </div>
 
                   <div className="space-y-2 mt-4 pt-3 border-t border-[#dedede]/30">
+                    <input
+                      ref={annPdfInputRef}
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      className="sr-only"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0] ?? null;
+                        if (f && !/\.pdf$/i.test(f.name)) {
+                          toast.error("Attach a PDF file.");
+                          e.target.value = "";
+                          return;
+                        }
+                        if (f && f.size > 25 * 1024 * 1024) {
+                          toast.error("PDF is larger than 25 MB.");
+                          e.target.value = "";
+                          return;
+                        }
+                        setAnnPdf(f);
+                      }}
+                    />
                     <button
                       type="button"
-                      onClick={triggerMockUpload}
+                      onClick={() => annPdfInputRef.current?.click()}
                       className="w-full h-8 border border-[#dedede] rounded-lg text-[10px] font-semibold text-[#1a1917] hover:bg-[#f6f6f6] flex items-center justify-center gap-1 transition-colors"
                     >
                       <Paperclip className="size-3.5" />
-                      Attach Document
+                      {annPdf ? "Change PDF" : "Attach PDF"}
                     </button>
                     <Button
                       type="submit"
-                      disabled={isSendingAnn}
+                      disabled={isSendingAnn || (!isAdminUser && !allowedSections?.length)}
                       className="w-full h-9 text-xs font-semibold bg-[#1a1917] hover:bg-[#333]"
                     >
                       <Megaphone className="size-3.5 mr-1" />
@@ -988,28 +1030,7 @@ export function FacultyMessagingView() {
                 <span className="text-xs font-bold text-[#1a1917]">Class Discussion Selector</span>
               </div>
               <div className="flex flex-wrap gap-2">
-                <select
-                  value={selectedDept}
-                  onChange={(e) => setSelectedDept(e.target.value)}
-                  className="h-8 rounded-lg border border-[#dedede] bg-white text-[10px] font-semibold px-2 outline-none"
-                >
-                  <option value="Computer Science & Engineering">CSE Department</option>
-                  <option value="Electronics & Communications">ECE Department</option>
-                  <option value="Electrical & Electronics Engineering">EEE Department</option>
-                  <option value="Mechanical Engineering">Mech Department</option>
-                </select>
-                <Input
-                  value={selectedSem}
-                  onChange={(e) => setSelectedSem(e.target.value)}
-                  placeholder="Semester 4"
-                  className="h-8 w-24 text-[10px] bg-white border-[#dedede]"
-                />
-                <Input
-                  value={selectedSec}
-                  onChange={(e) => setSelectedSec(e.target.value)}
-                  placeholder="Sec A"
-                  className="h-8 w-18 text-[10px] bg-white border-[#dedede]"
-                />
+                <ClassTargetPicker allowedSections={allowedSections} section={selectedSec} semester={selectedSem} onChange={pickClass} />
               </div>
             </div>
 
@@ -1080,10 +1101,7 @@ export function FacultyMessagingView() {
                             {msg.attachments && msg.attachments.length > 0 && (
                               <div className="mt-2 pt-2 border-t border-dashed border-[#dedede]/20">
                                 {msg.attachments.map((file: string, idx: number) => (
-                                  <div key={idx} className="flex items-center gap-1.5 text-[10px] opacity-90 hover:underline cursor-pointer">
-                                    <FileText className="size-3" />
-                                    <span>{file}</span>
-                                  </div>
+                                  <ChatAttachment key={idx} value={file} />
                                 ))}
                               </div>
                             )}
@@ -1284,10 +1302,7 @@ export function FacultyMessagingView() {
                             {msg.attachments && msg.attachments.length > 0 && (
                               <div className="mt-2 pt-2 border-t border-dashed border-[#dedede]/25">
                                 {msg.attachments.map((file: string, idx: number) => (
-                                  <div key={idx} className="flex items-center gap-1.5 text-[10px] opacity-90 hover:underline cursor-pointer">
-                                    <FileText className="size-3" />
-                                    <span>{file}</span>
-                                  </div>
+                                  <ChatAttachment key={idx} value={file} />
                                 ))}
                               </div>
                             )}

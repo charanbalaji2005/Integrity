@@ -412,7 +412,7 @@ export function TicketConversation({
 
   if (loading && !ticket) {
     return (
-      <div className={`${card} p-8 flex flex-col items-center justify-center gap-3 min-h-[320px]`} role="status">
+      <div className={`${card} m-4 sm:m-6 p-8 flex flex-col items-center justify-center gap-3 min-h-[320px]`} role="status">
         <Loader2 className="size-6 animate-spin text-[#8a8a8a]" aria-hidden />
         <p className="text-[13px] text-[#676767]">Loading conversation…</p>
       </div>
@@ -421,7 +421,7 @@ export function TicketConversation({
 
   if (loadError || !ticket) {
     return (
-      <div className={`${card} p-8 flex flex-col items-center justify-center gap-3 min-h-[320px] text-center`}>
+      <div className={`${card} m-4 sm:m-6 p-8 flex flex-col items-center justify-center gap-3 min-h-[320px] text-center`}>
         <p className="text-[14px] font-semibold text-[#1a1917]">We couldn't open this ticket</p>
         <p className="text-[13px] text-[#676767]" role="alert">
           {loadError}
@@ -450,7 +450,7 @@ export function TicketConversation({
   const showFirstAiTyping = showAiTyping && !hasStaffReply;
 
   return (
-    <section className={`${card} flex flex-col min-h-[560px] lg:h-[calc(100vh-180px)] lg:min-h-[600px] overflow-hidden`} aria-labelledby={`${ids}-title`}>
+    <section className="flex h-full min-h-0 flex-col overflow-hidden bg-white" aria-labelledby={`${ids}-title`}>
       {/* Header */}
       <header className="px-4 sm:px-5 pt-4 pb-3 border-b border-[#eee] space-y-3">
         <div className="flex items-start gap-2">

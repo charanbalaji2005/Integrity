@@ -1,3 +1,4 @@
+import { MULTI_PORTAL_EMAILS } from "../../../utils/multi-portal";
 import { prisma } from "@/database";
 import { auth, isAuthorizedInstitutionalEmail } from "@/providers/auth";
 import { sendEmail } from "@/services/mail";
@@ -125,16 +126,8 @@ export async function verifyRegisterOtp(email: string, otp: string): Promise<voi
 	});
 }
 
-/**
- * Default accounts that may sign in to every portal (admin, faculty, support, student)
- * with one set of credentials. Override with a comma-separated MULTI_PORTAL_EMAILS env var.
- */
-export const MULTI_PORTAL_EMAILS = (
-	process.env.MULTI_PORTAL_EMAILS || "charanbalajineelampalli752005@gmail.com"
-)
-	.split(",")
-	.map((e) => e.trim().toLowerCase())
-	.filter(Boolean);
+// Default all-portal accounts live in a shared util so section scoping can use them too.
+export { MULTI_PORTAL_EMAILS };
 
 const PORTAL_ROLE: Record<NonNullable<LoginPayload["portal"]>, string> = {
 	admin: "admin",

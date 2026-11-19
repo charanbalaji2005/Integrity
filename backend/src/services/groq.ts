@@ -82,6 +82,107 @@ export async function groqChat(opts: GroqChatOptions): Promise<string | null> {
 	}
 }
 
+/**
+ * Streams a Groq chat completion, calling onDelta with each text chunk.
+ * Resolves with the full text, or null if nothing could be produced (caller falls back).
+ * An AbortSignal lets the caller stop generation when the client disconnects.
+ */
+export async function groqStream(
+	opts: GroqChatOptions & { signal?: AbortSignal },
+	onDelta: (text: string) => void,
+): Promise<string | null> {
+	if (!env.GROQ_API_KEY) return null;
+	const model = GROQ_MODELS[opts.role];
+	const controller = new AbortController();
+	const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? 90000);
+	const onAbort = () => controller.abort();
+	opts.signal?.addEventListener("abort", onAbort);
+	let full = "";
+	try {
+		const body: Record<string, unknown> = {
+			model,
+			messages: opts.messages,
+			temperature: opts.temperature ?? 0.3,
+			max_completion_tokens: opts.maxTokens ?? 1024,
+			stream: true,
+		};
+		if (opts.reasoningEffort && model.startsWith("openai/gpt-oss")) body.reasoning_effort = opts.reasoningEffort;
+		const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+			method: "POST",
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.GROQ_API_KEY}` },
+			body: JSON.stringify(body),
+			signal: controller.signal,
+		});
+		if (!res.ok || !res.body) {
+			const detail = await res.text().catch(() => "");
+			console.warn(`[Groq:${opts.role}] stream ${model} → HTTP ${res.status} ${detail.slice(0, 200)}`);
+			return null;
+		}
+		const reader = res.body.getReader();
+		const decoder = new TextDecoder();
+		let buffer = "";
+		let inThink = false;
+		for (;;) {
+			const { value, done } = await reader.read();
+			if (done) break;
+			buffer += decoder.decode(value, { stream: true });
+			const lines = buffer.split("\n");
+			buffer = lines.pop() ?? "";
+			for (const line of lines) {
+				const trimmed = line.trim();
+				if (!trimmed.startsWith("data:")) continue;
+				const payload = trimmed.slice(5).trim();
+				if (payload === "[DONE]") continue;
+				try {
+					const json = JSON.parse(payload) as { choices?: { delta?: { content?: unknown } }[] };
+					let text = json.choices?.[0]?.delta?.content;
+					if (typeof text !== "string" || !text) continue;
+					// Drop <think>…</think> spans some models emit.
+					if (inThink || text.includes("<think>")) {
+						const out: string[] = [];
+						let rest = text;
+						while (rest) {
+							if (inThink) {
+								const end = rest.indexOf("</think>");
+								if (end < 0) {
+									rest = "";
+								} else {
+									inThink = false;
+									rest = rest.slice(end + 8);
+								}
+							} else {
+								const start = rest.indexOf("<think>");
+								if (start < 0) {
+									out.push(rest);
+									rest = "";
+								} else {
+									out.push(rest.slice(0, start));
+									inThink = true;
+									rest = rest.slice(start + 7);
+								}
+							}
+						}
+						text = out.join("");
+						if (!text) continue;
+					}
+					full += text;
+					onDelta(text as string);
+				} catch {
+					/* partial / keep-alive line */
+				}
+			}
+		}
+		return full.trim() || null;
+	} catch (err) {
+		if (opts.signal?.aborted) return full.trim() || null;
+		console.warn(`[Groq:${opts.role}] stream ${model} failed:`, err instanceof Error ? err.message : err);
+		return full.trim() || null;
+	} finally {
+		clearTimeout(timer);
+		opts.signal?.removeEventListener("abort", onAbort);
+	}
+}
+
 /** Parses a JSON object out of a model reply (tolerates ```json fences). */
 export function parseJsonReply<T>(reply: string | null): T | null {
 	if (!reply) return null;

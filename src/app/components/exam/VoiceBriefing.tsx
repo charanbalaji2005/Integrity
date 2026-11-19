@@ -6,7 +6,7 @@ export const BRIEFING_SENTENCES = [
   "Welcome to your proctored assessment.",
   "Your camera is monitored and the whole session is recorded.",
   "Stay in full screen and keep your face visible.",
-  "Do not switch tabs, copy, paste, or use other devices.",
+  "Do not switch tabs, paste outside text, or use other devices.",
   "If your internet becomes too slow, the exam pauses and your time stops.",
   "Your timer starts when this briefing ends. Good luck.",
 ];

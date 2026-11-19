@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
+  Library,
   LayoutDashboard,
   Video,
   ShieldAlert,
@@ -44,6 +45,7 @@ import imgAssessmentIntegrityLogo from "../../imports/LoginPortalIntegrityOs/ass
 import { ChatbotIcon } from "../components/ChatbotIcon";
 import { NotificationCenter } from "../components/NotificationCenter";
 import { SidebarProvider, SidebarTrigger } from "../components/ui/sidebar";
+import { StudyMaterialsPanel } from "../components/study/StudyMaterialsPanel";
 import { PortalSidebar } from "../components/PortalSidebar";
 import { openSettings } from "../settings/SettingsCenter";
 import { PlagiarismAnalysis } from "../components/PlagiarismAnalysis";
@@ -110,6 +112,9 @@ const RADAR_METRICS = [
 ];
 
 // Upcoming countdown helper
+/** Tabs that use the whole content area edge to edge (chat-style workspaces). */
+const FULL_BLEED_TABS = new Set(["Messages", "Support"]);
+
 function useCountdown(initialHours: number, initialMinutes: number, initialSeconds: number) {
   const [time, setTime] = useState({
     hours: initialHours,
@@ -157,7 +162,9 @@ export function DashboardView({
   parseUserAgent,
   onStartAssessment,
 }: DashboardViewProps) {
-  const [activeTab, setActiveTab] = useState("Overview");
+  const [activeTab, setActiveTab] = useState(() =>
+    new URLSearchParams(window.location.search).has("material") ? "Study Materials" : "Overview",
+  );
 
   // Enrolment verification: exams unlock once an admin approves the student's
   // college ID / fee receipt (also enforced server-side when starting an exam).
@@ -267,6 +274,7 @@ export function DashboardView({
   const sidebarLinks = [
     { name: "Overview", icon: LayoutDashboard },
     { name: "Messages", icon: MessageSquare },
+    { name: "Study Materials", icon: Library },
     { name: "Live Sessions", icon: Video },
     { name: "Integrity Reports", icon: ShieldAlert },
     { name: "AI Insights", icon: Sparkles },
@@ -303,9 +311,9 @@ export function DashboardView({
         user={{ name: user?.name, email: user?.email, image: user?.image, roleLabel: "Student" }}
         onSignOut={handleLogout}
         groups={[
-          { label: "Workspace", items: sidebarLinks.slice(0, 3).map((l) => ({ id: l.name, label: l.name, icon: l.icon })) },
-          { label: "Integrity", items: sidebarLinks.slice(3, 7).map((l) => ({ id: l.name, label: l.name, icon: l.icon })) },
-          { label: "Help", items: sidebarLinks.slice(7).map((l) => ({ id: l.name, label: l.name, icon: l.icon })) },
+          { label: "Workspace", items: sidebarLinks.slice(0, 4).map((l) => ({ id: l.name, label: l.name, icon: l.icon })) },
+          { label: "Integrity", items: sidebarLinks.slice(4, 8).map((l) => ({ id: l.name, label: l.name, icon: l.icon })) },
+          { label: "Help", items: sidebarLinks.slice(8).map((l) => ({ id: l.name, label: l.name, icon: l.icon })) },
         ]}
       />
 
@@ -375,8 +383,17 @@ export function DashboardView({
         </header>
 
         {/* Dashboard Content Container */}
-        <main className="flex-1 p-4 sm:p-6 md:p-8 space-y-6 overflow-y-auto">
-          <VerificationBanner verification={verification.data} onOpen={() => setShowVerifyModal(true)} />
+        <main
+          key={activeTab}
+          className={
+            FULL_BLEED_TABS.has(activeTab)
+              ? "portal-page-enter portal-full flex-1 h-[calc(100dvh-4rem)] min-h-0 flex flex-col overflow-hidden"
+              : "portal-page-enter flex-1 p-4 sm:p-6 md:p-8 space-y-6 overflow-y-auto"
+          }
+        >
+          {!FULL_BLEED_TABS.has(activeTab) && (
+            <VerificationBanner verification={verification.data} onOpen={() => setShowVerifyModal(true)} />
+          )}
           <VerificationModal
             open={showVerifyModal}
             onClose={() => setShowVerifyModal(false)}
@@ -1093,6 +1110,8 @@ export function DashboardView({
             <PlagiarismAnalysis user={user} />
           ) : activeTab === "Messages" ? (
             <StudentMessagingView />
+          ) : activeTab === "Study Materials" ? (
+            <StudyMaterialsPanel mode="student" />
           ) : activeTab === "Integrity Reports" ? (
             <IntegrityReports user={user} dbAssessments={dbAssessments} />
           ) : activeTab === "AI Insights" ? (

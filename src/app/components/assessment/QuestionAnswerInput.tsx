@@ -4,6 +4,13 @@ import { RichText } from "./RichText";
 import { AuthedImage } from "./protected-files";
 import { countBlanks, LANGUAGES, parseJson, type StudentQuestionConfig } from "./question-meta";
 
+// Monaco is heavy: load the coding UI only when a coding question is shown.
+const CodingWorkspace = React.lazy(() => import("../code/CodingWorkspace").then((m) => ({ default: m.CodingWorkspace })));
+const CodeEditor = React.lazy(() => import("../code/CodeEditor").then((m) => ({ default: m.CodeEditor })));
+const editorFallback = (
+  <div className="h-64 rounded-xl border border-zinc-800 bg-zinc-950 flex items-center justify-center text-xs text-zinc-400">Loading editor…</div>
+);
+
 /**
  * Student-facing question rendering, shared by the live exam and the faculty
  * preview so both look identical. Dark exam theme.
@@ -86,11 +93,17 @@ export function QuestionAnswerInput({
   value,
   onChange,
   disabled = false,
+  attemptId,
+  timeLeftSeconds,
 }: {
   question: ExamQuestion;
   value: string | undefined;
   onChange: (value: string) => void;
   disabled?: boolean;
+  /** Live exam attempt; enables the full coding workspace (run, save, submit) for coding questions. */
+  attemptId?: string;
+  /** Remaining exam time, shown inside the coding workspace. */
+  timeLeftSeconds?: number;
 }) {
   const q = question;
 
@@ -211,30 +224,36 @@ export function QuestionAnswerInput({
   }
 
   if (q.type === "coding") {
+    if (attemptId) {
+      return (
+        <React.Suspense fallback={editorFallback}>
+          <CodingWorkspace
+            attemptId={attemptId}
+            questionId={q.id}
+            maxMarks={q.points}
+            timeLeftSeconds={timeLeftSeconds}
+            disabled={disabled}
+            onCodeChange={onChange}
+          />
+        </React.Suspense>
+      );
+    }
+    // Faculty preview: editor only, nothing is sent to the server.
     const config = parseJson<StudentQuestionConfig>(q.config, {});
     const current = value ?? config.starterCode ?? "";
+    const label = LANGUAGES.find((l) => l.value === config.language)?.label ?? config.language ?? "Code";
     return (
-      <textarea
-        rows={14}
-        value={current}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key !== "Tab" || disabled) return;
-          e.preventDefault();
-          const el = e.currentTarget;
-          const { selectionStart: s, selectionEnd: end } = el;
-          const next = `${current.slice(0, s)}    ${current.slice(end)}`;
-          onChange(next);
-          requestAnimationFrame(() => el.setSelectionRange(s + 4, s + 4));
-        }}
-        placeholder="// Write your code solution here..."
-        spellCheck={false}
-        autoCapitalize="off"
-        autoCorrect="off"
-        aria-label="Code answer"
-        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3.5 sm:p-4 text-base sm:text-xs font-mono select-text focus:outline-none focus:border-[#b2b2b2] focus:ring-1 focus:ring-[#b2b2b2] caret-white disabled:opacity-60"
-      />
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-[11px]">
+          <span className="rounded-md border border-zinc-700 bg-zinc-950 px-2 py-0.5 font-semibold text-zinc-200">{label}</span>
+          <span className="text-zinc-500">Preview — students can compile, run sample tests and submit versions during the exam.</span>
+        </div>
+        <div className="h-80 rounded-xl border border-zinc-800 overflow-hidden bg-[#1e1e1e]">
+          <React.Suspense fallback={editorFallback}>
+            <CodeEditor value={current} onChange={onChange} language={config.language || "plaintext"} readOnly={disabled} ariaLabel="Code answer" />
+          </React.Suspense>
+        </div>
+      </div>
     );
   }
 

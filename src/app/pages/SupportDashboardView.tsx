@@ -233,7 +233,7 @@ function SupportHubConsole({ user, handleLogout }: { user: any; handleLogout: ()
           onClearNotifications={() => setNotifications([])}
           onOpenSettings={() => openSettings()}
         />
-        <main className="flex-1 min-h-0 overflow-hidden" id="support-hub-main">
+        <main key={section} className="portal-page-enter portal-full flex-1 min-h-0 overflow-hidden" id="support-hub-main">
           {content}
         </main>
       </div>

@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { HTTP_STATUS } from "../constants/http-status";
 import { AppError } from "./app-error";
+import { isMultiPortalEmail } from "./multi-portal";
 
 /**
  * Faculty ↔ section assignment.
@@ -76,11 +77,15 @@ export function validateFacultySections(input: unknown): string {
 interface ScopedUser {
 	role: string | null;
 	section?: string | null;
+	/** Used to exempt the default all-portal accounts from section scoping. */
+	email?: string | null;
 }
 
 /** Faculty sections, or null when the user is not section-scoped (admins see everyone). */
 export function facultySectionsOf(user: ScopedUser): string[] | null {
 	if (user.role === "admin") return null;
+	// All-portal default accounts see every student in every portal.
+	if (isMultiPortalEmail(user.email)) return null;
 	if (user.role === "faculty") return parseSections(user.section);
 	return [];
 }

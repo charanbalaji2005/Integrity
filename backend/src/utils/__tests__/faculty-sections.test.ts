@@ -50,3 +50,13 @@ describe("section visibility", () => {
 		expect(sectionMonitorRoom("x1", "cse-a")).toBe("assessment-proctoring-x1::CSE-A");
 	});
 });
+
+describe("all-portal default accounts", () => {
+	it("are never limited by faculty section scoping", () => {
+		const multi = { role: "faculty", section: "A", email: "CharanBalajiNeelampalli752005@gmail.com" };
+		expect(canSeeStudentSection(multi, "ECE-Z")).toBe(true);
+		expect(attemptSectionWhere(multi)).toEqual({});
+		// an ordinary faculty member with the same (invalid) section still sees no one
+		expect(canSeeStudentSection({ role: "faculty", section: "A", email: "prof@srmap.edu.in" }, "CSE-A")).toBe(false);
+	});
+});

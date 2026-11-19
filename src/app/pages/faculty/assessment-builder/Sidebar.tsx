@@ -168,7 +168,7 @@ export function IntegrityPanel() {
           />
           <CfgToggle path="integrityConfig.browser.windowFocus" label="Window focus monitoring" disabled={!v.tabSwitchDetection} />
           <CfgToggle path="integrityConfig.browser.fullscreenExit" label="Fullscreen exit detection" />
-          <CfgToggle path="integrityConfig.browser.copyPaste" label="Copy / paste blocking" description={v.browserLockdown ? undefined : "Needs browser lockdown on."} disabled={!v.browserLockdown} />
+          <CfgToggle path="integrityConfig.browser.copyPaste" label="Copy / paste blocking" description={v.browserLockdown ? "Blocks copying questions and pasting outside text; copy/paste within a student's own answers stays allowed." : "Needs browser lockdown on."} disabled={!v.browserLockdown} />
           <CfgToggle path="integrityConfig.browser.contextMenu" label="Context menu restriction" disabled={!v.browserLockdown} />
         </SettingsGroup>
 

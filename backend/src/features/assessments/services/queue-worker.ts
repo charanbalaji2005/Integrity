@@ -1,6 +1,7 @@
 import { prisma } from "@/database";
 import { getIO } from "../../../providers/socket";
 import { runCompleteAIEvaluation } from "./ai-pipeline";
+import { sendResultEmail } from "./result-email";
 
 let isWorkerRunning = false;
 let checkInterval: NodeJS.Timeout | null = null;
@@ -38,6 +39,11 @@ export function startQueueWorker() {
 			console.error("[Queue Worker] Uncaught error in processing cycle:", err);
 		}
 	}, 5000);
+}
+
+/** Whether the evaluation queue worker is currently polling (used by the admin agent monitor). */
+export function isQueueWorkerRunning() {
+	return isWorkerRunning && checkInterval !== null;
 }
 
 /**
@@ -116,7 +122,12 @@ async function processNextJob() {
 				},
 			});
 
-			// 3. Emit socket event
+			// 3. Email the student their results and completion certificate (once; never fails the job)
+			void sendResultEmail(attempt.id).then((r) => {
+				if (r === "sent") console.log(`[Queue Worker] Results email sent for attempt ${attempt.id}`);
+			});
+
+			// 4. Emit socket event
 			const io = getIO();
 			if (io) {
 				io.emit("integrity-report-created", {

@@ -13,6 +13,7 @@ import {
 	pinMessage,
 	reactToMessage,
 } from "../controllers/chat-controller";
+import { postAnnouncement } from "../controllers/announcement-controller";
 
 const router: IRouter = Router();
 
@@ -36,6 +37,9 @@ router.post("/messages/:id/delete", deleteMessage);
 
 // POST /api/chat/messages/:id/forward
 router.post("/messages/:id/forward", forwardMessage);
+
+// POST /api/chat/announcements (faculty → own sections; admins → anywhere)
+router.post("/announcements", postAnnouncement);
 
 // GET /api/chat/faculty
 router.get("/faculty", getFacultyList);

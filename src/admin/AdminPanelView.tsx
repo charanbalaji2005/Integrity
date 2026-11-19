@@ -24,8 +24,10 @@ import {
 	Key,
 	Lock,
 	Check,
-	X
+	X,
+	Library,
 } from "lucide-react";
+import { StudyMaterialsPanel } from "../app/components/study/StudyMaterialsPanel";
 import { Button } from "../app/components/ui/button";
 import { Input } from "../app/components/ui/input";
 import { toast } from "sonner";
@@ -70,6 +72,7 @@ export function AdminPanelView({ user, handleBack, parseUserAgent }: AdminPanelV
 		| "support"
 		| "audit"
 		| "feedback"
+		| "materials"
 		| "settings"
 	>("overview");
 
@@ -1004,6 +1007,7 @@ export function AdminPanelView({ user, handleBack, parseUserAgent }: AdminPanelV
 			items: [
 				{ id: "assessments", label: "Assessments Control", icon: Sliders },
 				{ id: "feedback", label: "Exam Feedback", icon: FeedbackTabIcon },
+				{ id: "materials", label: "Study Materials", icon: Library },
 			],
 		},
 		{
@@ -1023,6 +1027,7 @@ export function AdminPanelView({ user, handleBack, parseUserAgent }: AdminPanelV
 				onSelect={(id) => setActiveTab(id as typeof activeTab)}
 				user={{ name: user?.name, email: user?.email, image: user?.image, roleLabel: "Administrator" }}
 				onSignOut={handleBack}
+				showSignOutItem
 				onOpenSettings={() => openSettings()}
 				headerAction={<NotificationCenter placement="sidebar" />}
 				groups={ADMIN_NAV_GROUPS}
@@ -1038,12 +1043,26 @@ export function AdminPanelView({ user, handleBack, parseUserAgent }: AdminPanelV
 					<span className="truncate text-[13px] font-semibold text-[#1a1917]">
 						{ADMIN_NAV_GROUPS.flatMap((g) => g.items).find((i) => i.id === activeTab)?.label}
 					</span>
+					<button
+						type="button"
+						onClick={handleBack}
+						className="ml-auto inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-3 text-[13px] font-semibold text-rose-600 transition-colors hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 cursor-pointer"
+					>
+						<LogOut className="size-4" aria-hidden="true" />
+						<span className="hidden sm:inline">Log out</span>
+						<span className="sr-only sm:hidden">Log out</span>
+					</button>
 				</header>
-				<div className="p-6 md:p-10 max-w-full">
+				<div key={activeTab} className="portal-page-enter p-6 md:p-10 max-w-full">
 				<AnimatePresence mode="wait">
 					{/* STUDENT ENROLMENT VERIFICATION */}
 					{activeTab === "verification" && <AdminVerificationPanel />}
 					{activeTab === "feedback" && <AdminFeedbackPanel />}
+					{activeTab === "materials" && (
+						<motion.div key="materials-tab" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+							<StudyMaterialsPanel mode="admin" />
+						</motion.div>
+					)}
 
 					{/* 1. OVERVIEW & HEALTH */}
 					{activeTab === "overview" && (
@@ -1081,7 +1100,7 @@ export function AdminPanelView({ user, handleBack, parseUserAgent }: AdminPanelV
 									{maintenanceMode && !emergencyShutdown && (
 										<div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-2xl flex items-center gap-3 text-xs font-bold shadow">
 											<AlertTriangle className="size-5 text-amber-600 shrink-0" />
-											<span>WARNING: Maintenance Mode is currently ACTIVE. Normal student examinations and faculty evaluations are blocked.</span>
+											<span>WARNING: Maintenance Mode is currently ACTIVE. Student, faculty and support portals are offline; only the admin panel is available.</span>
 										</div>
 									)}
 								</div>
@@ -2365,6 +2384,11 @@ export function AdminPanelView({ user, handleBack, parseUserAgent }: AdminPanelV
 
 												<div className="flex items-center justify-between">
 													<span className="font-semibold text-zinc-500">Faculty Portal</span>
+													<span className="px-2 py-0.5 text-[10px] font-bold bg-rose-100 text-rose-700 rounded-full">OFFLINE</span>
+												</div>
+
+												<div className="flex items-center justify-between">
+													<span className="font-semibold text-zinc-500">Support Portal</span>
 													<span className="px-2 py-0.5 text-[10px] font-bold bg-rose-100 text-rose-700 rounded-full">OFFLINE</span>
 												</div>
 

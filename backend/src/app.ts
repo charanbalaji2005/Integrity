@@ -10,9 +10,10 @@ import { answerSimilarityRouter } from "./features/answer-similarity/routes/answ
 import { assessmentRouter } from "./features/assessments/routes/assessment-routes";
 import { authenticationRouter } from "./features/authentication/routes/authentication-routes";
 import { chatRouter } from "./features/chat/routes/chat-routes";
-import { examFeedbackRouter } from "./features/exam-feedback/routes/exam-feedback-routes";
 import { courseRouter } from "./features/courses/routes/course-routes";
+import { examFeedbackRouter } from "./features/exam-feedback/routes/exam-feedback-routes";
 import { facultyAssistantRouter } from "./features/faculty-assistant/routes/faculty-assistant-routes";
+import { codingRouter } from "./features/coding/routes/coding-routes";
 import { healthRouter } from "./features/health/routes/health-routes";
 import { notificationRouter } from "./features/notifications/routes/notification-routes";
 import { plagiarismRouter } from "./features/plagiarism/routes/plagiarism-routes";
@@ -20,11 +21,12 @@ import { aiProctoringRouter } from "./features/proctoring/routes/ai-proctoring-r
 import { proctoringRouter } from "./features/proctoring/routes/proctoring-routes";
 import { recordingRouter } from "./features/proctoring/routes/recording-routes";
 import { profileRouter } from "./features/profile/routes/profile-routes";
+import { studyMaterialRouter } from "./features/study-materials/routes/study-material-routes";
 import { supportRouter } from "./features/support/routes/support-routes";
 import { textExtractionRouter } from "./features/text-extraction/routes/text-extraction-routes";
 import { verificationRouter } from "./features/verification/routes/verification-routes";
-
 import { errorHandler } from "./middleware/error-handler";
+import { decideMaintenanceAccess } from "./middleware/maintenance-gate";
 import { notFound } from "./middleware/not-found";
 import { auth } from "./providers/auth";
 import { requestContextStore } from "./utils/request-context";
@@ -342,62 +344,39 @@ app.all("/api/auth/*any", toNodeHandler(auth));
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 
-// Blocker middleware for Maintenance Mode and Emergency Shutdown
+// Maintenance Mode / Emergency Shutdown: every portal is down except the
+// admin panel (policy + tests in middleware/maintenance-gate.ts).
 app.use(async (req, res, next) => {
 	try {
-		const { maintenanceMode, emergencyShutdown, studentPortalEnabled, facultyPortalEnabled } =
-			getPlatformState();
-		if (maintenanceMode || emergencyShutdown) {
-			const isPublicRoute =
-				req.url.startsWith("/api/admin") ||
-				req.url.startsWith("/api/auth") ||
-				req.url.startsWith("/api/health");
-			if (isPublicRoute) {
-				return next();
-			}
+		const { maintenanceMode, emergencyShutdown } = getPlatformState();
+		let decision = decideMaintenanceAccess({ path: req.path, maintenanceMode, emergencyShutdown });
+		if (decision.allow) return next();
 
-			let userRole: string | null = null;
+		if (decision.needsRole) {
+			let role: string | null = null;
 			try {
-				const sessionData = await auth.api.getSession({
-					headers: fromNodeHeaders(req.headers),
-				});
+				const sessionData = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
 				if (sessionData?.user) {
 					const dbUser = await prisma.user.findUnique({
 						where: { id: sessionData.user.id },
+						select: { role: true },
 					});
-					if (dbUser) {
-						userRole = dbUser.role;
-					}
+					role = dbUser?.role ?? null;
 				}
-			} catch (_err) {
-				// Ignore session extraction failure for unauthenticated visitors
+			} catch {
+				// Anonymous visitor
 			}
+			decision = decideMaintenanceAccess({
+				path: req.path,
+				maintenanceMode,
+				emergencyShutdown,
+				role,
+			});
+			if (decision.allow) return next();
+		}
 
-			const isAdmin = userRole === "admin" || userRole === "support";
-			if (isAdmin) {
-				return next();
-			}
-
-			if (emergencyShutdown) {
-				return res.status(503).json({
-					status: "EMERGENCY_SHUTDOWN",
-					message: "System has been suspended by the administrator for safety and security.",
-				});
-			}
-
-			if (maintenanceMode) {
-				if (userRole === "faculty") {
-					return res.status(503).json({
-						status: "MAINTENANCE_MODE",
-						message: "Faculty portal is undergoing planned maintenance. Please try again later.",
-					});
-				} else {
-					return res.status(503).json({
-						status: "MAINTENANCE_MODE",
-						message: "Student portal is undergoing planned maintenance. Please try again later.",
-					});
-				}
-			}
+		if ("status" in decision) {
+			return res.status(503).json({ status: decision.status, message: decision.message });
 		}
 		next();
 	} catch (e) {
@@ -424,7 +403,9 @@ app.use("/api/verification", verificationRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/exam-feedback", examFeedbackRouter);
 app.use("/api/courses", courseRouter);
+app.use("/api/study-materials", studyMaterialRouter);
 app.use("/api/faculty-assistant", facultyAssistantRouter);
+app.use("/api/coding", codingRouter);
 
 app.use(notFound);
 app.use(errorHandler);

@@ -577,16 +577,21 @@ export async function runCompleteAIEvaluation(attemptId: string): Promise<void> 
 			const currentEmb = await getEmbedding(ans.response);
 			const embeddingStr = JSON.stringify(currentEmb);
 
+			// Coding answers are graded by the Vigil code engine (sandboxed test
+			// execution + rubric); text similarity must not overwrite those marks.
+			const isCoding = question.type === "coding";
 			await prisma.answer.update({
 				where: { id: ans.id },
-				data: {
-					aiGrade: Math.round((semanticResult.score / 100) * question.points * 10) / 10,
-					aiConfidence:
-						(semanticResult.confidence + plagResult.confidence + aiResult.confidence) / 3,
-					aiEvaluation: JSON.stringify(details),
-					isFlagged: plagResult.score > 30 || aiResult.score > 50 || semanticResult.score < 40,
-					embedding: embeddingStr,
-				},
+				data: isCoding
+					? { embedding: embeddingStr }
+					: {
+							aiGrade: Math.round((semanticResult.score / 100) * question.points * 10) / 10,
+							aiConfidence:
+								(semanticResult.confidence + plagResult.confidence + aiResult.confidence) / 3,
+							aiEvaluation: JSON.stringify(details),
+							isFlagged: plagResult.score > 30 || aiResult.score > 50 || semanticResult.score < 40,
+							embedding: embeddingStr,
+						},
 			});
 		}
 	}

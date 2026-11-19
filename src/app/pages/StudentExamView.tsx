@@ -31,6 +31,7 @@ import { reportViolation } from "../proctoring/report-violation";
 import VoiceBriefing from "../components/exam/VoiceBriefing";
 import { PostExamFeedbackAgent } from "../components/PostExamFeedbackAgent";
 import { QuestionAnswerInput, QuestionPrompt } from "../components/assessment/QuestionAnswerInput";
+import { flushCodingDrafts } from "../components/code/workspace-api";
 import { ExamMaterialsPanel } from "../components/assessment/ExamMaterialsPanel";
 import { isAnswered as hasAnswer, parseJson } from "../components/assessment/question-meta";
 import { LiveProctorMascot } from "../components/mascot/LiveProctorMascot";
@@ -927,28 +928,33 @@ export default function StudentExamView({ assessmentId, user, onClose }: Student
     handleSubmit();
   };
 
+  // Advance the submission progress steps once per second.
+  // Depends ONLY on showAnimation: the parent re-renders every second (live
+  // clock) and passes a fresh onClose each time, so listing onClose here reset
+  // the interval before it ever fired and froze the modal at step 1 (10%).
   useEffect(() => {
     if (!showAnimation) return;
-    
     const interval = setInterval(() => {
-      setCurrentStepIdx((prev) => {
-        if (prev >= SUBMISSION_STEPS.length - 1) {
-          clearInterval(interval);
-          // Hand over to the post-exam feedback agent instead of closing straight away.
-          setShowAnimation(false);
-          setShowFeedbackAgent(true);
-          return prev;
-        }
-        return prev + 1;
-      });
+      setCurrentStepIdx((prev) => Math.min(prev + 1, SUBMISSION_STEPS.length - 1));
     }, 1000);
-
     return () => clearInterval(interval);
-  }, [showAnimation, onClose]);
+  }, [showAnimation]);
+
+  // After the last step, hand over to the post-exam feedback agent.
+  useEffect(() => {
+    if (!showAnimation || currentStepIdx < SUBMISSION_STEPS.length - 1) return;
+    const done = setTimeout(() => {
+      setShowAnimation(false);
+      setShowFeedbackAgent(true);
+    }, 1000);
+    return () => clearTimeout(done);
+  }, [showAnimation, currentStepIdx]);
 
   const handleSubmit = async () => {
     if (isSubmitting || !attempt) return;
     setIsSubmitting(true);
+    // Push any unsaved coding drafts first: the backend grades the newest saved code.
+    await flushCodingDrafts();
 
     try {
       const answersPayload = Object.entries(answers).map(([questionId, response]) => ({
@@ -1536,12 +1542,17 @@ export default function StudentExamView({ assessmentId, user, onClose }: Student
                               </button>
                             </div>
                           )}
-                          <QuestionAnswerInput
-                            question={currentQ}
-                            value={answers[currentQ.id]}
-                            onChange={(v) => handleTextChange(currentQ.id, v)}
-                            disabled={timeUp}
-                          />
+                          {/* Own-answer area: copy/paste is allowed within it (see clipboard agent) */}
+                          <div data-exam-answer="" className="select-text">
+                            <QuestionAnswerInput
+                              question={currentQ}
+                              value={answers[currentQ.id]}
+                              onChange={(v) => handleTextChange(currentQ.id, v)}
+                              disabled={timeUp}
+                              attemptId={attempt?.id}
+                              timeLeftSeconds={timeLeft}
+                            />
+                          </div>
                         </div>
 
                         {recentProctorAlerts.length > 0 && (

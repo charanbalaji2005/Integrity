@@ -40,7 +40,9 @@ export async function getNotifications(req: Request, res: Response): Promise<voi
 
 	// System alerts belong to the admin panel only. Other roles never receive
 	// them (role comes from the verified session, not from client headers).
-	if (!canSeeSystemAlerts(user.role)) {
+	// An admin viewing the student/faculty/support portal gets that portal's feed.
+	const portal = typeof req.query.portal === "string" ? req.query.portal : null;
+	if (!canSeeSystemAlerts(user.role) || (portal !== null && portal !== "admin")) {
 		whereClause.type =
 			whereClause.type === SYSTEM_TYPE ? { in: [] } : whereClause.type ?? { not: SYSTEM_TYPE };
 	}

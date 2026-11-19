@@ -92,7 +92,7 @@ export function PreviewDialog({ open, onOpenChange, form, course }: { open: bool
     form.microphoneAnalysis && "Your microphone is monitored for voices and background speech.",
     form.tabSwitchDetection && "Switching tabs or windows is logged.",
     form.integrityConfig.browser.fullscreenExit && "The exam runs in full screen; leaving it is logged.",
-    form.browserLockdown && form.integrityConfig.browser.copyPaste && "Copy, cut and paste are disabled.",
+    form.browserLockdown && form.integrityConfig.browser.copyPaste && "Copying questions and pasting outside text are blocked (students can copy/paste within their own answers).",
     form.negativeMarking && `Wrong objective answers may lose marks (default −${form.negativeMarkValue}). Blank answers are never penalised.`,
     form.allowResume ? `If you are disconnected you can resume within ${form.resumeTimeWindow} minutes (up to ${form.maxResumeCount} times).` : "Interrupted attempts cannot be resumed.",
     form.autoSubmitOnExpiry ? "Your answers are submitted automatically when time runs out." : "When time runs out your answers lock and you must submit.",

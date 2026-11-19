@@ -217,6 +217,9 @@ model Question {
   topicId         String?
   topic           CourseTopic? @relation(fields: [topicId], references: [id], onDelete: SetNull)
   answers         Answer[]
+  codeDrafts      CodeDraft[]
+  codeExecutions  CodeExecution[]
+  codeSubmissions CodeSubmission[]
 
   @@index([assessmentId, order])
   @@map("questions")
@@ -283,6 +286,10 @@ model AssessmentAttempt {
 
   // Post-exam feedback collected by the feedback agent (one per attempt)
   examFeedback ExamFeedback?
+
+  codeDrafts      CodeDraft[]
+  codeExecutions  CodeExecution[]
+  codeSubmissions CodeSubmission[]
 
   @@map("assessment_attempts")
 }
@@ -666,8 +673,9 @@ model StoredFile {
   data      Bytes
   createdAt DateTime @default(now())
 
-  syllabi   Syllabus[]
-  materials CourseMaterial[]
+  syllabi        Syllabus[]
+  materials      CourseMaterial[]
+  studyMaterials StudyMaterial[]
 
   @@index([ownerId, sha256])
   @@map("stored_files")
@@ -952,4 +960,289 @@ model SupportCounter {
   value Int @default(0)
 
   @@map("support_counters")
+}
+
+/// Vigil faculty copilot: a saved conversation (owner-only).
+model AssistantConversation {
+  id           String                @id @default(cuid())
+  userId       String
+  title        String                @default("New conversation")
+  /// Assessment the faculty member pinned as context, if any.
+  assessmentId String?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  messages     AssistantMessage[]
+  attachments  AssistantAttachment[]
+
+  @@index([userId, updatedAt])
+  @@map("assistant_conversations")
+}
+
+model AssistantMessage {
+  id             String                @id @default(cuid())
+  conversationId String
+  conversation   AssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String // "user" | "assistant"
+  content        String
+  /// Agent that produced an assistant message ("question", "integrity", …).
+  agent          String?
+  /// JSON: execution steps, model, attachment ids, data sources used.
+  meta           String?
+  createdAt      DateTime              @default(now())
+
+  @@index([conversationId, createdAt])
+  @@map("assistant_messages")
+}
+
+/// A document the faculty member shared with Vigil. Only the extracted text is kept.
+model AssistantAttachment {
+  id             String                 @id @default(cuid())
+  userId         String
+  conversationId String?
+  conversation   AssistantConversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  fileName       String
+  mimeType       String
+  sizeBytes      Int
+  kind           String // "pdf" | "docx" | "pptx" | "text" | "image"
+  extractedText  String
+  truncated      Boolean                @default(false)
+  createdAt      DateTime               @default(now())
+
+  @@index([userId, createdAt])
+  @@map("assistant_attachments")
+}
+
+/// PDF study material shared with one section (or every section, admins only).
+/// Students see materials for their own section; faculty may only publish to
+/// the sections they teach.
+model StudyMaterial {
+  id             String     @id @default(cuid())
+  title          String
+  description    String?
+  /// Section code such as "CSE-A", or "ALL" for every student (admins only).
+  section        String
+  /// Optional "Semester N" restriction (matches the student profile value).
+  semester       String?
+  fileId         String
+  file           StoredFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  uploadedById   String
+  uploadedByName String
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@index([section, createdAt])
+  @@index([uploadedById])
+  @@map("study_materials")
+}
+
+// ───────────────────────── Vigil coding assessments ─────────────────────────
+// Student code is never executed by this backend: runs go to the isolated
+// Judge0 sandbox (infra/judge0). Drafts are mutable; submissions are immutable
+// versions kept for audit. Evaluations, flags and faculty reviews are history.
+
+/// Autosaved work in progress, one row per attempt/question/language.
+model CodeDraft {
+  id         String            @id @default(cuid())
+  attemptId  String
+  attempt    AssessmentAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId String
+  question   Question          @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  studentId  String
+  language   String // "c" | "cpp" | "java" | "python"
+  sourceCode String
+  saveCount  Int               @default(1)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  @@unique([attemptId, questionId, language])
+  @@index([studentId])
+  @@map("code_drafts")
+}
+
+/// Every compile / run / sample-test request a student (or faculty) makes.
+model CodeExecution {
+  id            String             @id @default(cuid())
+  attemptId     String?
+  attempt       AssessmentAttempt? @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId    String?
+  question      Question?          @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  userId        String
+  language      String
+  mode          String // "compile" | "run" | "sample"
+  sourceCode    String
+  stdin         String?
+  status        String             @default("queued") // queued | running | completed | failed
+  verdict       String? // accepted | wrong_answer | compilation_error | runtime_error | time_limit | memory_limit | infra_error
+  stdout        String?
+  stderr        String?
+  compileOutput String?
+  exitCode      Int?
+  timeMs        Int?
+  memoryKb      Int?
+  /// JSON array of judge tokens (one per sample test for mode "sample").
+  judgeTokens   String?
+  /// JSON array of per-sample-test results (mode "sample" only).
+  sampleResults String?
+  infraError    String?
+  createdAt     DateTime           @default(now())
+  completedAt   DateTime?
+
+  @@index([userId, createdAt])
+  @@index([attemptId, questionId, createdAt])
+  @@index([status])
+  @@map("code_executions")
+}
+
+/// Immutable submitted version. A new version is created for every submit.
+model CodeSubmission {
+  id             String              @id @default(cuid())
+  attemptId      String
+  attempt        AssessmentAttempt   @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId     String
+  question       Question            @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  assessmentId   String
+  studentId      String
+  version        Int
+  language       String
+  sourceCode     String
+  sourceHash     String
+  /// "student" (pressed Submit) | "exam_submit" (latest draft at final submission)
+  source         String              @default("student")
+  isLatest       Boolean             @default(true)
+  /// PENDING | EVALUATING | EVALUATED | FLAGGED | IN_REVIEW | REVIEWED | FAILED
+  status         String              @default("PENDING")
+  maxMarks       Float
+  suggestedMarks Float?
+  finalMarks     Float?
+  /// "ai" (auto-graded) | "faculty"
+  finalizedBy    String?
+  submittedAt    DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  evaluations    CodeEvaluation[]
+  testResults    CodeTestResult[]
+  flags          CodeFlag[]
+  reviews        CodeReview[]
+  jobs           CodeEvaluationJob[]
+
+  @@unique([attemptId, questionId, version])
+  @@index([assessmentId, status])
+  @@index([studentId])
+  @@map("code_submissions")
+}
+
+/// One evaluation run of a submission (auto, re-evaluation, bulk re-run).
+model CodeEvaluation {
+  id             String           @id @default(cuid())
+  submissionId   String
+  submission     CodeSubmission   @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  runNumber      Int
+  trigger        String // "auto" | "faculty" | "bulk"
+  triggeredById  String?
+  status         String           @default("running") // running | completed | pending_ai | infra_error | failed
+  /// ok | compilation_error | infra_error | not_run
+  compileStatus  String?
+  compileOutput  String?
+  testsPassed    Int              @default(0)
+  testsTotal     Int              @default(0)
+  testMarks      Float?
+  aiMarks        Float?
+  suggestedMarks Float?
+  maxMarks       Float
+  /// JSON: [{ criterion, awarded, max, source: "tests"|"ai", reason }]
+  breakdown      String?
+  feedback       String?
+  /// 0–1, computed from evidence (not the model's self-report alone)
+  confidence     Float?
+  generatedBy    String? // "llm" | "tests_only"
+  /// JSON array of { code, detail }
+  flagReasons    String?
+  aiRaw          String?
+  error          String?
+  createdAt      DateTime         @default(now())
+  completedAt    DateTime?
+  testResults    CodeTestResult[]
+
+  @@unique([submissionId, runNumber])
+  @@map("code_evaluations")
+}
+
+model CodeTestResult {
+  id             String         @id @default(cuid())
+  submissionId   String
+  submission     CodeSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  evaluationId   String
+  evaluation     CodeEvaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  index          Int
+  hidden         Boolean
+  input          String
+  expectedOutput String
+  actualOutput   String?
+  stderr         String?
+  passed         Boolean
+  verdict        String
+  timeMs         Int?
+  memoryKb       Int?
+
+  @@index([evaluationId, index])
+  @@map("code_test_results")
+}
+
+/// Raised when Vigil cannot confidently grade; worked by faculty.
+model CodeFlag {
+  id                String         @id @default(cuid())
+  submissionId      String
+  submission        CodeSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  evaluationId      String?
+  /// low_confidence | contradictory_evidence | no_test_cases | suspected_hardcoding | ambiguous_question | infrastructure_error | ai_unavailable | second_review
+  reason            String
+  detail            String?
+  status            String         @default("pending") // pending | in_review | reviewed
+  assignedFacultyId String?
+  openedById        String?
+  openedAt          DateTime?
+  resolvedById      String?
+  resolvedAt        DateTime?
+  createdAt         DateTime       @default(now())
+
+  @@index([status, createdAt])
+  @@index([submissionId])
+  @@map("code_flags")
+}
+
+/// Faculty actions on a submission; doubles as the audit log.
+model CodeReview {
+  id            String         @id @default(cuid())
+  submissionId  String
+  submission    CodeSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  flagId        String?
+  facultyId     String
+  facultyName   String
+  /// open | approve_ai | override | reevaluate | request_second_review | mark_reviewed | remark | bulk_reevaluate
+  action        String
+  marks         Float?
+  previousMarks Float?
+  remark        String?
+  explanation   String?
+  createdAt     DateTime       @default(now())
+
+  @@index([submissionId, createdAt])
+  @@map("code_reviews")
+}
+
+/// Durable work queue for evaluations (retries with backoff; survives restarts).
+model CodeEvaluationJob {
+  id            String         @id @default(cuid())
+  submissionId  String
+  submission    CodeSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  trigger       String // "auto" | "faculty" | "bulk"
+  triggeredById String?
+  status        String         @default("pending") // pending | processing | done | failed
+  attempts      Int            @default(0)
+  nextRunAt     DateTime       @default(now())
+  lastError     String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([status, nextRunAt])
+  @@map("code_evaluation_jobs")
 }

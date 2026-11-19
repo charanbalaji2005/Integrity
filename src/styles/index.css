@@ -305,3 +305,50 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .auth-gold-text { animation: none; }
 }
+
+/* ───────── Portal page transitions ─────────
+   Applied to each portal's content area (re-keyed per tab): the page fades and
+   rises in, and its top-level sections reveal one after another. */
+@keyframes portal-page-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes portal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.portal-page-enter > * {
+  animation: portal-page-in 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.portal-page-enter > *:nth-child(2) { animation-delay: 50ms; }
+.portal-page-enter > *:nth-child(3) { animation-delay: 100ms; }
+.portal-page-enter > *:nth-child(4) { animation-delay: 150ms; }
+.portal-page-enter > *:nth-child(5) { animation-delay: 200ms; }
+.portal-page-enter > *:nth-child(6) { animation-delay: 250ms; }
+.portal-page-enter > *:nth-child(n + 7) { animation-delay: 300ms; }
+
+/* Sections inside a tab's own wrapper stagger too (most tabs render one root element). */
+.portal-page-enter > * > *:not(:only-child) {
+  animation: portal-page-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.portal-page-enter > * > *:nth-child(2) { animation-delay: 70ms; }
+.portal-page-enter > * > *:nth-child(3) { animation-delay: 130ms; }
+.portal-page-enter > * > *:nth-child(4) { animation-delay: 190ms; }
+.portal-page-enter > * > *:nth-child(5) { animation-delay: 250ms; }
+.portal-page-enter > * > *:nth-child(n + 6) { animation-delay: 300ms; }
+
+/* Full-bleed workspaces (chat, support, AI) only fade, so their panes don't shift. */
+.portal-page-enter.portal-full > *,
+.portal-page-enter.portal-full > * > * {
+  animation: portal-fade-in 320ms ease-out both;
+  animation-delay: 0ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-page-enter > *,
+  .portal-page-enter > * > * {
+    animation: none !important;
+  }
+}

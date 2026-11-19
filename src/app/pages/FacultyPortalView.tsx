@@ -26,7 +26,10 @@ import {
   Zap,
   RefreshCw,
   FileSpreadsheet,
+  Library,
+  FileCode2,
 } from "lucide-react";
+import { StudyMaterialsPanel } from "../components/study/StudyMaterialsPanel";
 import SectionResults, { type CompletionEvent } from "../components/faculty/SectionResults";
 import { analyzeLiveSessionWithGroq, GROQ_MODEL, type LiveSessionGroqAnalysis } from "../services/groq-service";
 import { toast } from "sonner";
@@ -57,6 +60,7 @@ import { openSettings } from "../settings/SettingsCenter";
 import { readPreferences, usePreferences } from "../settings/preferences";
 import { FacultyMessagingView } from "./FacultyMessagingView";
 import { FacultyAIChat } from "../components/faculty/FacultyAIChat";
+import { FlaggedCodeSubmissions, usePendingCodeFlagCount } from "../components/faculty/code-review/FlaggedCodeSubmissions";
 import { createAuthedSocket, joinRoom } from "../utils/socket-client";
 import AssessmentBuilder from "./faculty/assessment-builder/AssessmentBuilder";
 import { apiFetch } from "../utils/api-client";
@@ -100,6 +104,7 @@ const shortDate = (v?: string | null) =>
 
 export default function FacultyPortalView({ user, session, handleLogout }: FacultyPortalViewProps) {
   const [activeTab, setActiveTab] = useState("Overview");
+  const pendingCodeFlags = usePendingCodeFlagCount();
   
   // State for assessments list
   const [assessments, setAssessments] = useState<any[]>([]);
@@ -636,6 +641,7 @@ export default function FacultyPortalView({ user, session, handleLogout }: Facul
             items: [
               { id: "Overview", label: "Overview", icon: LayoutDashboard },
               { id: "Messages", label: "Messages", icon: MessageSquare },
+              { id: "Study Materials", label: "Study Materials", icon: Library },
               { id: "AI Assistant", label: "AI Assistant", icon: Sparkles },
             ],
           },
@@ -646,6 +652,7 @@ export default function FacultyPortalView({ user, session, handleLogout }: Facul
               { id: "Proctoring", label: "Proctoring", icon: Video },
               { id: "Evaluation Queue", label: "Evaluation Queue", icon: FileCheck },
               { id: "Section Results", label: "Section Results", icon: FileSpreadsheet },
+              { id: "Flagged Code Submissions", label: "Flagged Code Submissions", icon: FileCode2, badge: pendingCodeFlags },
             ],
           },
           {
@@ -698,7 +705,14 @@ export default function FacultyPortalView({ user, session, handleLogout }: Facul
           </div>
         </header>
 
-        <main className="flex-1 p-6 md:p-8 space-y-6 overflow-y-auto">
+        <main
+          key={activeTab}
+          className={
+            activeTab === "Messages" || activeTab === "AI Assistant"
+              ? "portal-page-enter portal-full flex-1 h-[calc(100dvh-4rem)] min-h-0 flex flex-col overflow-hidden"
+              : "portal-page-enter flex-1 p-6 md:p-8 space-y-6 overflow-y-auto"
+          }
+        >
           {/* TAB 1: OVERVIEW */}
           {activeTab === "Overview" && (
             <div className="space-y-6">
@@ -1739,6 +1753,8 @@ Reason (recorded in the audit timeline):`,
           )}
 
           {/* TAB 5: ANALYTICS HUB */}
+          {activeTab === "Flagged Code Submissions" && <FlaggedCodeSubmissions />}
+
           {activeTab === "Section Results" && (
             <SectionResults
               assessments={assessments.map((a: any) => ({ id: a.id, title: a.title }))}
@@ -2020,8 +2036,11 @@ Reason (recorded in the audit timeline):`,
             <FacultyMessagingView />
           )}
 
+          {/* Study materials: PDFs shared with the faculty member's own sections */}
+          {activeTab === "Study Materials" && <StudyMaterialsPanel mode="faculty" />}
+
           {/* TAB 8: AI ASSISTANT (verified faculty only — enforced server-side) */}
-          {activeTab === "AI Assistant" && <FacultyAIChat user={user} />}
+          {activeTab === "AI Assistant" && <FacultyAIChat user={user} onOpenAssessment={(id) => openBuilder(id)} />}
 
           <AlertDialog open={!!resetTarget} onOpenChange={(o) => !o && setResetTarget(null)}>
             <AlertDialogContent>

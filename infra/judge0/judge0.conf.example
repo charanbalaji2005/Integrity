@@ -1,0 +1,79 @@
+# Judge0 configuration for IntegrityOS (Vigil coding).
+# Copy to judge0.conf and replace every CHANGE_ME (or run setup.ps1 / setup.sh,
+# which generates random secrets and writes JUDGE0_* into backend/.env).
+
+################################################################################
+# Authentication — the backend sends AUTHN_TOKEN as X-Auth-Token.
+################################################################################
+AUTHN_HEADER=X-Auth-Token
+AUTHN_TOKEN=CHANGE_ME_AUTHN_TOKEN
+# Admin endpoints (workers, system info) need this separate token.
+AUTHZ_HEADER=X-Auth-User
+AUTHZ_TOKEN=CHANGE_ME_AUTHZ_TOKEN
+
+################################################################################
+# Sandbox hardening
+################################################################################
+# Programs never get network access, and a submission cannot ask for it.
+ENABLE_NETWORK=false
+ALLOW_ENABLE_NETWORK=false
+# Only what the backend uses.
+ENABLE_WAIT_RESULT=false
+ENABLE_COMPILER_OPTIONS=true
+ENABLE_COMMAND_LINE_ARGUMENTS=false
+ENABLE_SUBMISSION_DELETE=false
+ENABLE_CALLBACKS=false
+ENABLE_ADDITIONAL_FILES=false
+ENABLE_BATCHED_SUBMISSIONS=true
+MAX_SUBMISSION_BATCH_SIZE=50
+REDIRECT_STDERR_TO_STDOUT=false
+MAX_QUEUE_SIZE=500
+
+# Default and maximum limits per run (the backend sets per-question limits
+# inside these caps). Memory and stack are in KB, time in seconds.
+CPU_TIME_LIMIT=2
+MAX_CPU_TIME_LIMIT=10
+CPU_EXTRA_TIME=0.5
+MAX_CPU_EXTRA_TIME=2
+WALL_TIME_LIMIT=5
+MAX_WALL_TIME_LIMIT=20
+MEMORY_LIMIT=256000
+MAX_MEMORY_LIMIT=512000
+STACK_LIMIT=64000
+MAX_STACK_LIMIT=128000
+# Fork-bomb protection (the JVM needs a few dozen threads).
+MAX_PROCESSES_AND_OR_THREADS=16
+MAX_MAX_PROCESSES_AND_OR_THREADS=64
+ENABLE_PER_PROCESS_AND_THREAD_TIME_LIMIT=false
+ALLOW_ENABLE_PER_PROCESS_AND_THREAD_TIME_LIMIT=false
+ENABLE_PER_PROCESS_AND_THREAD_MEMORY_LIMIT=false
+ALLOW_ENABLE_PER_PROCESS_AND_THREAD_MEMORY_LIMIT=false
+# Output files a program may write (KB).
+MAX_FILE_SIZE=1024
+MAX_MAX_FILE_SIZE=4096
+NUMBER_OF_RUNS=1
+MAX_NUMBER_OF_RUNS=1
+
+################################################################################
+# Workers
+################################################################################
+# Parallel sandbox workers. Raise for large exams (each needs ~1 CPU core).
+COUNT=4
+
+################################################################################
+# Internal services (only reachable inside the compose network)
+################################################################################
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_PASSWORD=CHANGE_ME_REDIS_PASSWORD
+
+POSTGRES_HOST=db
+POSTGRES_PORT=5432
+POSTGRES_DB=judge0
+POSTGRES_USER=judge0
+POSTGRES_PASSWORD=CHANGE_ME_POSTGRES_PASSWORD
+
+RAILS_ENV=production
+RAILS_MAX_THREADS=5
+RAILS_SERVER_PROCESSES=2
+SECRET_KEY_BASE=

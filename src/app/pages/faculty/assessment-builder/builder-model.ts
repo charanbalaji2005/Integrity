@@ -46,6 +46,25 @@ export interface TestCase {
   hidden: boolean;
 }
 
+/** Languages the code execution service supports. */
+export const CODING_LANGUAGE_KEYS = ["c", "cpp", "java", "python"] as const;
+export type CodingLanguageKey = (typeof CODING_LANGUAGE_KEYS)[number];
+export const isCodingLanguage = (v: unknown): v is CodingLanguageKey => CODING_LANGUAGE_KEYS.includes(v as CodingLanguageKey);
+
+export type OutputMatchMode = "trim" | "exact" | "tokens";
+
+export interface RubricItem {
+  criterion: string;
+  marks: number;
+  description: string;
+}
+
+export const defaultRubric = (): RubricItem[] => [
+  { criterion: "Logic & approach", marks: 1, description: "" },
+  { criterion: "Efficiency", marks: 1, description: "" },
+  { criterion: "Code quality", marks: 1, description: "" },
+];
+
 export interface QuestionForm {
   /** Stable client key for lists and drag-and-drop. */
   key: string;
@@ -72,6 +91,14 @@ export interface QuestionForm {
   testCases: TestCase[];
   timeLimitMs: number;
   memoryLimitMb: number;
+  /** Languages students may choose (empty = all supported). */
+  allowedLanguages: CodingLanguageKey[];
+  /** Share of the marks decided by test cases (0-100); the rest follows the rubric. */
+  testWeightPercent: number;
+  outputMatch: OutputMatchMode;
+  rubric: RubricItem[];
+  /** AI confidence below this (percent) flags the submission; null = server default (70). */
+  confidenceThreshold: number | null;
   // fill in the blanks — accepted answers per blank, alternatives separated by "|"
   blanks: string[];
   caseSensitive: boolean;
@@ -177,6 +204,11 @@ export function newQuestion(type: QuestionType, defaults?: { negativeMarks?: num
     testCases: [],
     timeLimitMs: 2000,
     memoryLimitMb: 256,
+    allowedLanguages: [],
+    testWeightPercent: 70,
+    outputMatch: "trim",
+    rubric: defaultRubric(),
+    confidenceThreshold: null,
     blanks: [],
     caseSensitive: false,
   };
@@ -311,6 +343,13 @@ function questionFromServer(q: ServerQuestion): QuestionForm {
     testCases: (cfg.testCases ?? []).map((t: TestCase) => ({ input: t.input ?? "", output: t.output ?? "", hidden: t.hidden !== false })),
     timeLimitMs: cfg.timeLimitMs ?? base.timeLimitMs,
     memoryLimitMb: cfg.memoryLimitMb ?? base.memoryLimitMb,
+    allowedLanguages: Array.isArray(cfg.allowedLanguages) ? cfg.allowedLanguages.filter(isCodingLanguage) : [],
+    testWeightPercent: typeof cfg.testWeightPercent === "number" ? cfg.testWeightPercent : base.testWeightPercent,
+    outputMatch: cfg.outputMatch === "exact" || cfg.outputMatch === "tokens" ? cfg.outputMatch : "trim",
+    rubric: Array.isArray(cfg.rubric)
+      ? cfg.rubric.map((r: Partial<RubricItem>) => ({ criterion: r.criterion ?? "", marks: Number(r.marks) || 0, description: r.description ?? "" }))
+      : base.rubric,
+    confidenceThreshold: typeof cfg.confidenceThreshold === "number" ? Math.round(cfg.confidenceThreshold * 100) : null,
     blanks: ((cfg.blanks as string[][] | undefined) ?? []).map((alts) => alts.join(" | ")),
     caseSensitive: !!cfg.caseSensitive,
   };
@@ -394,6 +433,13 @@ export function questionToPayload(q: QuestionForm) {
       testCases: q.testCases,
       timeLimitMs: Number(q.timeLimitMs) || undefined,
       memoryLimitMb: Number(q.memoryLimitMb) || undefined,
+      allowedLanguages: q.allowedLanguages,
+      testWeightPercent: Math.min(100, Math.max(0, Number(q.testWeightPercent) || 0)),
+      outputMatch: q.outputMatch,
+      rubric: q.rubric
+        .filter((r) => r.criterion.trim())
+        .map((r) => ({ criterion: r.criterion.trim(), marks: Number(r.marks) || 0, description: r.description.trim() || undefined })),
+      confidenceThreshold: q.confidenceThreshold == null ? undefined : Math.min(1, Math.max(0, q.confidenceThreshold / 100)),
     });
   }
   if (q.type === "fill-blank") {
@@ -497,6 +543,11 @@ export function questionIssues(q: QuestionForm): string[] {
       break;
     case "coding":
       if (!q.language) out.push("Select a programming language.");
+      else if (!isCodingLanguage(q.language)) out.push("Choose C, C++, Java or Python as the language.");
+      else if (q.allowedLanguages.length > 0 && !q.allowedLanguages.includes(q.language))
+        out.push("The default language must be one of the allowed languages.");
+      if (q.testWeightPercent < 100 && q.rubric.filter((r) => r.criterion.trim()).length === 0)
+        out.push("Add at least one rubric criterion, or set the test weight to 100%.");
       if (!q.modelAnswer.trim() && q.testCases.length === 0) out.push("Add a reference solution or a test case.");
       break;
   }

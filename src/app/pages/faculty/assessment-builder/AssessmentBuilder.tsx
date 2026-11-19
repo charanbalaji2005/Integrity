@@ -300,7 +300,7 @@ export default function AssessmentBuilder({
     <TooltipProvider delayDuration={200}>
       <DndProvider backend={HTML5Backend}>
         <FormProvider {...form}>
-          <div className="mx-auto max-w-[1400px] space-y-5">
+          <div className="w-full space-y-5">
             {/* Header */}
             <div className="space-y-4">
               <Breadcrumb>

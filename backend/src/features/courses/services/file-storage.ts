@@ -4,7 +4,7 @@ import { HTTP_STATUS } from "@/constants/http-status";
 import { prisma } from "@/database";
 import { AppError } from "@/utils/app-error";
 
-export type FilePurpose = "syllabus" | "material" | "question-image";
+export type FilePurpose = "syllabus" | "material" | "question-image" | "study";
 
 const MB = 1024 * 1024;
 
@@ -39,6 +39,11 @@ export const FILE_RULES: Record<FilePurpose, FileRule> = {
 			md: "text/markdown",
 		},
 		label: "PDF, DOC/DOCX, PPT/PPTX, TXT or MD up to 25 MB",
+	},
+	study: {
+		maxBytes: 25 * MB,
+		types: { pdf: PDF },
+		label: "PDF up to 25 MB",
 	},
 	"question-image": {
 		maxBytes: 5 * MB,

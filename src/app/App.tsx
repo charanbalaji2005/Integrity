@@ -66,13 +66,25 @@ function parseUserAgent(ua?: string) {
   return `${browser} on ${os}`;
 }
 
+type PortalKind = "admin" | "faculty" | "support" | "student";
+
+/** Role the notification feed should use for the portal on screen (admin alerts stay in the admin portal). */
+const PORTAL_NOTIFICATION_ROLE: Record<PortalKind, string> = {
+  admin: "admin",
+  faculty: "faculty",
+  support: "support",
+  student: "user",
+};
+
 interface AuthorizedPortalWrapperProps {
   children: React.ReactNode;
   user: any;
   handleLogout: () => void;
+  /** Which portal is being shown. An admin browsing another portal sees that portal's notifications. */
+  portal: PortalKind;
 }
 
-const AuthorizedPortalWrapper: React.FC<AuthorizedPortalWrapperProps> = ({ children, user, handleLogout }) => {
+const AuthorizedPortalWrapper: React.FC<AuthorizedPortalWrapperProps> = ({ children, user, handleLogout, portal }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   useEffect(() => {
@@ -89,7 +101,10 @@ const AuthorizedPortalWrapper: React.FC<AuthorizedPortalWrapperProps> = ({ child
 
   return (
     <MotionConfig reducedMotion={reduceMotion ? "always" : "user"}>
-      <NotificationProvider userId={user.id} userRole={user.role}>
+      <NotificationProvider
+        userId={user.id}
+        userRole={user.role === "admin" ? PORTAL_NOTIFICATION_ROLE[portal] : user.role}
+      >
         <ProfileProvider userId={user.id} userRole={user.role}>
           {children}
           <ProfileCenter
@@ -162,6 +177,12 @@ function EmergencyShutdownScreen() {
           <div className="size-2 rounded-full bg-red-500 animate-ping" />
           <span>Status Code: 503 SERVICE_UNAVAILABLE_EMERGENCY</span>
         </div>
+        <a
+          href="/?admin=true"
+          className="mt-6 inline-block text-[11px] font-semibold text-zinc-500 hover:text-zinc-300 underline underline-offset-4"
+        >
+          Administrator sign-in
+        </a>
       </motion.div>
 
       <span className="absolute bottom-6 text-[10px] font-bold text-zinc-600 uppercase tracking-widest z-10">
@@ -223,6 +244,12 @@ function MaintenanceScreen() {
           <div className="size-2 rounded-full bg-amber-500 animate-ping" />
           <span>Status Code: 503 SERVICE_UNAVAILABLE_MAINTENANCE</span>
         </div>
+        <a
+          href="/?admin=true"
+          className="mt-6 inline-block text-[11px] font-semibold text-zinc-500 hover:text-zinc-300 underline underline-offset-4"
+        >
+          Administrator sign-in
+        </a>
       </motion.div>
 
       <span className="absolute bottom-6 text-[10px] font-bold text-zinc-600 uppercase tracking-widest z-10">
@@ -1118,7 +1145,7 @@ export default function App() {
     const activeRole = localStorage.getItem("activeRole") || user.role;
     if (user.role === "faculty" || (user.role === "admin" && activeRole === "faculty")) {
       return (
-        <AuthorizedPortalWrapper user={user} handleLogout={handleLogout}>
+        <AuthorizedPortalWrapper user={user} handleLogout={handleLogout} portal="faculty">
           <FacultyPortalView
             user={user}
             session={session}
@@ -1130,7 +1157,7 @@ export default function App() {
 
     if (user.role === "support" || (user.role === "admin" && activeRole === "support")) {
       return (
-        <AuthorizedPortalWrapper user={user} handleLogout={handleLogout}>
+        <AuthorizedPortalWrapper user={user} handleLogout={handleLogout} portal="support">
           <SupportDashboardView
             user={user}
             session={session}
@@ -1141,7 +1168,7 @@ export default function App() {
     }
 
     return (
-      <AuthorizedPortalWrapper user={user} handleLogout={handleLogout}>
+      <AuthorizedPortalWrapper user={user} handleLogout={handleLogout} portal="student">
         <DashboardView
           user={user}
           session={session}
@@ -1335,11 +1362,11 @@ export default function App() {
           <AnimatePresence mode="wait">
             {user ? (
               isAdminPortal ? (
-                <AuthorizedPortalWrapper user={user} handleLogout={handleLogout}>
+                <AuthorizedPortalWrapper user={user} handleLogout={handleLogout} portal="admin">
                   <AdminPanelView key="admin" user={user} handleBack={handleLogout} parseUserAgent={parseUserAgent} />
                 </AuthorizedPortalWrapper>
               ) : (
-                <AuthorizedPortalWrapper user={user} handleLogout={handleLogout}>
+                <AuthorizedPortalWrapper user={user} handleLogout={handleLogout} portal="student">
                   <DashboardView key="dashboard" user={user} session={session} clientInfo={clientInfo} handleLogout={handleLogout} parseUserAgent={parseUserAgent} />
                 </AuthorizedPortalWrapper>
               )

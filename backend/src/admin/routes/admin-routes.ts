@@ -52,7 +52,10 @@ async function adminMiddleware(req: any, res: any, next: any) {
 				},
 			});
 
-			if (user && (user.role === "admin" || user.role === "support")) {
+			// Admin API is administrators only. Support staff have their own
+			// /api/support endpoints; letting them in here allowed role changes,
+			// user deletion and emergency shutdown from a support account.
+			if (user && user.role === "admin") {
 				req.user = user;
 				req.session = sessionData.session;
 				return next();

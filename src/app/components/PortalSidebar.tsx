@@ -1,4 +1,5 @@
 import React from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { ChevronsUpDown, LogOut, Settings as SettingsIcon, UserRound, type LucideIcon } from "lucide-react";
 import {
   Sidebar,
@@ -55,6 +56,8 @@ interface PortalSidebarProps {
   /** Optional control in the header (e.g. the admin notification bell). */
   headerAction?: React.ReactNode;
   onOpenSettings?: () => void;
+  /** Show a visible "Sign out" entry in the footer (in addition to the account menu). */
+  showSignOutItem?: boolean;
 }
 
 const initials = (name?: string | null) =>
@@ -78,8 +81,10 @@ export function PortalSidebar({
   onSignOut,
   headerAction,
   onOpenSettings,
+  showSignOutItem = false,
 }: PortalSidebarProps) {
   const { isMobile, setOpenMobile } = useSidebar();
+  const reduceMotion = useReducedMotion();
 
   const select = (id: string) => {
     onSelect(id);
@@ -118,8 +123,17 @@ export function PortalSidebar({
                       tooltip={item.label}
                       onClick={() => select(item.id)}
                       aria-current={isActive ? "page" : undefined}
-                      className="h-9 font-medium data-[active=true]:bg-zinc-950 data-[active=true]:text-white data-[active=true]:shadow-sm data-[active=true]:hover:bg-zinc-900 data-[active=true]:hover:text-white"
+                      className="relative isolate h-9 font-medium transition-colors duration-200 data-[active=true]:bg-transparent data-[active=true]:text-white data-[active=true]:hover:bg-transparent data-[active=true]:hover:text-white [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110"
                     >
+                      {isActive && (
+                        // Active highlight glides between items when navigating.
+                        <motion.span
+                          aria-hidden="true"
+                          layoutId={reduceMotion ? undefined : `portal-nav-active-${portalLabel}`}
+                          transition={{ type: "spring", stiffness: 520, damping: 40, mass: 0.8 }}
+                          className="absolute inset-0 -z-10 rounded-md bg-zinc-950 shadow-sm"
+                        />
+                      )}
                       <Icon className="size-4 shrink-0" />
                       <span>{item.label}</span>
                     </SidebarMenuButton>
@@ -144,6 +158,18 @@ export function PortalSidebar({
 
       <SidebarFooter>
         <SidebarMenu>
+          {showSignOutItem && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip="Sign out"
+                onClick={onSignOut}
+                className="h-9 font-medium text-rose-600 hover:bg-rose-50 hover:text-rose-700 active:bg-rose-100 active:text-rose-700"
+              >
+                <LogOut className="size-4 shrink-0" />
+                <span>Sign out</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

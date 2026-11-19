@@ -3,6 +3,15 @@ import { env } from "./config/env";
 import { prisma } from "./database";
 import { initSocketServer } from "./providers/socket";
 
+// Prevent server crash on unhandled background promises or errors
+process.on("unhandledRejection", (reason, promise) => {
+	console.error("[Process] Unhandled Rejection at:", promise, "reason:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+	console.error("[Process] Uncaught Exception:", error);
+});
+
 /**
  * Startup order matters on Render:
  *  1. Open the HTTP port immediately. Render's port scan / health check must
@@ -68,6 +77,12 @@ async function initialiseData() {
 	const { startAssignmentScheduler } = await import("./features/support/services/assignment");
 	await ensureDefaultKnowledgeBase().catch((err) => console.error("[Support] KB seed failed:", err));
 	startAssignmentScheduler();
+
+	// Vigil coding: poll the Judge0 sandbox for runs and process evaluation jobs.
+	const { startExecutionPoller } = await import("./features/coding/services/execution-service");
+	const { startEvaluationWorker } = await import("./features/coding/services/evaluation-service");
+	startExecutionPoller();
+	startEvaluationWorker();
 }
 
 async function preloadModels() {

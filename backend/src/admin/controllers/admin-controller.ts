@@ -13,6 +13,13 @@ import {
 	updatePlatformState,
 } from "../services/platform-state";
 
+/** Administrators cannot act on other administrator accounts (same rule as suspend/delete). */
+function assertNotOtherAdmin(target: { id: string; role: string }, actor: { id: string }) {
+	if (target.role === "admin" && target.id !== actor.id) {
+		throw new AppError("You cannot modify other administrators", HTTP_STATUS.FORBIDDEN);
+	}
+}
+
 export async function getUsersHandler(req: Request, res: Response) {
 	const users = await adminService.getAllUsers();
 	sendSuccess(res, users, "Users retrieved successfully", HTTP_STATUS.OK);
@@ -143,9 +150,15 @@ export async function deleteUserHandler(req: Request, res: Response) {
 
 	await adminService.deleteUser(userId);
 
-	// Log deletion action (write to general sys logs since user log is cascadingly deleted if linked)
-	console.log(
-		`[Admin Activity] User ${targetUser.email} (ID: ${userId}) was deleted by admin ${adminUser.email}`,
+	// The target's own logs cascade away with the account, so record the
+	// deletion against the acting administrator.
+	const ip = (req.headers["x-forwarded-for"] as string) ?? req.socket.remoteAddress;
+	await adminService.logAdminAction(
+		adminUser.id,
+		adminUser.id,
+		`deleted ${targetUser.role} account ${targetUser.email} (admin ${adminUser.email})`,
+		ip,
+		req.headers["user-agent"],
 	);
 
 	sendSuccess(res, null, "User deleted successfully", HTTP_STATUS.OK);
@@ -726,6 +739,7 @@ export async function forceLogoutUserHandler(req: Request, res: Response) {
 	if (!targetUser) {
 		throw new AppError("User not found", HTTP_STATUS.NOT_FOUND);
 	}
+	assertNotOtherAdmin(targetUser, adminUser);
 
 	// Revoke sessions
 	await prisma.session.deleteMany({
@@ -758,11 +772,14 @@ export async function unlockUserHandler(req: Request, res: Response) {
 		throw new AppError("User not found", HTTP_STATUS.NOT_FOUND);
 	}
 
+	// A manual lock sets status "locked" as well as lockedUntil; clear both or
+	// sign-in keeps rejecting the account.
 	await prisma.user.update({
 		where: { id: userId },
 		data: {
 			failedLoginAttempts: 0,
 			lockedUntil: null,
+			...(targetUser.status === "locked" ? { status: "active" } : {}),
 		},
 	});
 
@@ -1065,6 +1082,7 @@ export async function lockUserHandler(req: Request, res: Response) {
 	if (!user) {
 		throw new AppError("User not found", HTTP_STATUS.NOT_FOUND);
 	}
+	assertNotOtherAdmin(user, adminUser);
 
 	const updatedUser = await prisma.user.update({
 		where: { id: userId },
@@ -1101,6 +1119,7 @@ export async function toggleTwoFactorHandler(req: Request, res: Response) {
 	if (!user) {
 		throw new AppError("User not found", HTTP_STATUS.NOT_FOUND);
 	}
+	assertNotOtherAdmin(user, adminUser);
 
 	const updatedUser = await prisma.user.update({
 		where: { id: userId },
@@ -1160,6 +1179,7 @@ export async function forcePasswordResetHandler(req: Request, res: Response) {
 	if (!user) {
 		throw new AppError("User not found", HTTP_STATUS.NOT_FOUND);
 	}
+	assertNotOtherAdmin(user, adminUser);
 
 	const updatedUser = await prisma.user.update({
 		where: { id: userId },
@@ -1201,12 +1221,18 @@ export async function resetAllStudentRisksHandler(req: Request, res: Response) {
 		},
 	});
 
-	// Log change
 	const adminUser = (req as any).user;
 	logSelfHealingAction(
 		"WAF Security Agent Manager",
 		`All student risk scores and suspensions reset by admin (${adminUser.email})`,
 		"MONITOR",
+	);
+	await adminService.logAdminAction(
+		adminUser.id,
+		adminUser.id,
+		`reset risk scores, locks and suspensions for all students (admin ${adminUser.email})`,
+		(req.headers["x-forwarded-for"] as string) ?? req.socket.remoteAddress,
+		req.headers["user-agent"],
 	);
 
 	sendSuccess(

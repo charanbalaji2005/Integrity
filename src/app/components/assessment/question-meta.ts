@@ -57,10 +57,10 @@ export function typeMeta(type: string) {
 }
 
 export const LANGUAGES = [
-  { value: "python", label: "Python 3" },
-  { value: "java", label: "Java 17" },
-  { value: "cpp", label: "C++ 17" },
-  { value: "c", label: "C" },
+  { value: "python", label: "Python 3.8" },
+  { value: "java", label: "Java (OpenJDK 13)" },
+  { value: "cpp", label: "C++17 (G++ 9.2)" },
+  { value: "c", label: "C (GCC 9.2)" },
   { value: "javascript", label: "JavaScript (Node)" },
   { value: "typescript", label: "TypeScript" },
   { value: "go", label: "Go" },
