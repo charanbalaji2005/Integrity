@@ -4,6 +4,7 @@ import { HTTP_STATUS } from "@/constants/http-status";
 import { prisma } from "@/database";
 import { auth } from "@/providers/auth";
 import { AppError } from "@/utils/app-error";
+import { isTwoFactorPending } from "@/features/authentication/services/two-factor-service";
 import {
 	createFacultyHandler,
 	createStudentHandler,
@@ -45,7 +46,7 @@ async function adminMiddleware(req: any, res: any, next: any) {
 			headers: fromNodeHeaders(req.headers),
 		});
 
-		if (sessionData?.user) {
+		if (sessionData?.user && !isTwoFactorPending(sessionData)) {
 			const user = await prisma.user.findUnique({
 				where: {
 					id: sessionData.user.id,

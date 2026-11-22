@@ -75,11 +75,13 @@ async function processNextJob() {
 
 	console.log(`[Queue Worker] Processing job ${job.id} for Attempt ${job.attemptId}...`);
 
-	// Lock the job to prevent other instances from processing it
-	await prisma.evaluationJob.update({
-		where: { id: job.id },
+	// Atomically claim the job: if another worker or server instance got there first,
+	// count is 0 and we leave it alone (prevents double grading and duplicate emails).
+	const claimed = await prisma.evaluationJob.updateMany({
+		where: { id: job.id, status: "pending" },
 		data: { status: "processing" },
 	});
+	if (claimed.count !== 1) return;
 
 	try {
 		// Run the full 7-agent evaluation pipeline

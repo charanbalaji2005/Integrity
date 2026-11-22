@@ -1,5 +1,6 @@
 import { type IRouter, Router } from "express";
 import { rateLimiter, requireAuth } from "@/middleware/auth-middleware";
+import { loginStatusHandler, sendLoginCodeHandler, verifyLoginCodeHandler } from "../controllers/two-factor-controller";
 import {
 	forgotPassword,
 	googleOAuth,
@@ -28,6 +29,11 @@ router.post("/verify-register-otp", authRateLimiter, verifyRegisterOtpHandler);
 
 // POST /api/authentication/login
 router.post("/login", authRateLimiter, login);
+
+// Two-step verification (session issued by /login or Google stays unusable until verified)
+router.post("/2fa/status", authRateLimiter, loginStatusHandler);
+router.post("/2fa/send", authRateLimiter, sendLoginCodeHandler);
+router.post("/2fa/verify", authRateLimiter, verifyLoginCodeHandler);
 
 // POST /api/authentication/forgot-password
 router.post("/forgot-password", authRateLimiter, forgotPassword);

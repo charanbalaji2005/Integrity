@@ -601,7 +601,8 @@ export function FacultyMessagingView() {
     toast.success(`Attached file: ${randomFile}`);
   };
 
-  const isProfileIncomplete = !profile?.name || !profile?.department || !profile?.section;
+  // Admins don't teach sections, so they skip the faculty profile setup.
+  const isProfileIncomplete = !isAdminUser && (!profile?.name || !profile?.department || !profile?.section);
 
   return (
     <div className="flex h-full min-h-0 w-full relative bg-white">
@@ -684,7 +685,7 @@ export function FacultyMessagingView() {
       <div className="w-72 shrink-0 bg-[#fafafa] border-r border-[#dedede] flex flex-col p-4 select-none">
         <h3 className="text-base font-bold text-[#1a1917] mb-4 flex items-center gap-2">
           <MessageSquare className="size-4.5 text-[#8a8a8a]" />
-          Faculty Communications
+          {isAdminUser ? "Admin Communications" : "Faculty Communications"}
         </h3>
 
         <div className="space-y-1.5 flex-1 overflow-y-auto pr-1">
@@ -811,7 +812,7 @@ export function FacultyMessagingView() {
                                 ? "bg-indigo-50 border-indigo-200 text-indigo-700"
                                 : "bg-emerald-50 border-emerald-200 text-emerald-700"
                             }`}>
-                              {ann.senderRole === "faculty" || ann.senderRole === "admin" ? "Faculty" : "Student"}
+                              {ann.senderRole === "admin" ? "Admin" : ann.senderRole === "faculty" ? "Faculty" : "Student"}
                             </span>
                           </span>
                           <span className="text-[9px] text-[#8a8a8a]">
@@ -1072,7 +1073,7 @@ export function FacultyMessagingView() {
                                 ? "bg-indigo-50 border-indigo-200 text-indigo-700"
                                 : "bg-emerald-50 border-emerald-200 text-emerald-700"
                             }`}>
-                              {msg.senderRole === "faculty" || msg.senderRole === "admin" ? "Faculty" : "Student"}
+                              {msg.senderRole === "admin" ? "Admin" : msg.senderRole === "faculty" ? "Faculty" : "Student"}
                             </span>
                           </span>
                         )}

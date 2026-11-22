@@ -5,6 +5,7 @@ import { prisma } from "@/database";
 import { getIO } from "@/providers/socket";
 import { AppError } from "@/utils/app-error";
 import { validateFacultySections } from "@/utils/faculty-sections";
+import { canonicalSectionList, resolveStudentSection } from "@/utils/section-codes";
 import { sendSuccess } from "@/utils/response";
 import * as adminService from "../services/admin-service";
 import {
@@ -879,7 +880,7 @@ export async function createStudentHandler(req: Request, res: Response) {
 			department,
 			branch,
 			semester,
-			section,
+			section: resolveStudentSection(section, department),
 			institutionName: institutionName || "SRM University AP",
 		},
 	});
@@ -940,7 +941,7 @@ export async function createFacultyHandler(req: Request, res: Response) {
 	}
 
 	// Faculty teach 1–3 sections; they will only see students from these.
-	const facultySections = validateFacultySections(req.body.sections ?? req.body.section);
+	const facultySections = validateFacultySections(canonicalSectionList(req.body.sections ?? req.body.section, department));
 
 	validatePasswordStrength(password);
 
@@ -1031,8 +1032,8 @@ export async function editUserHandler(req: Request, res: Response) {
 		rawSection === undefined
 			? undefined
 			: effectiveRole === "faculty"
-				? validateFacultySections(rawSection)
-				: rawSection;
+				? validateFacultySections(canonicalSectionList(rawSection, dataToUpdate.department ?? user.department))
+				: resolveStudentSection(rawSection, dataToUpdate.department ?? user.department);
 
 	const updatedUser = await prisma.user.update({
 		where: { id: userId },

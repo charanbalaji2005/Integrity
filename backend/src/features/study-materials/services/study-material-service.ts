@@ -4,11 +4,10 @@ import { prisma } from "@/database";
 import { AppError } from "@/utils/app-error";
 import {
 	SECTION_CODE_RE,
-	canSeeStudentSection,
-	facultySectionsOf,
 	normalizeSectionCode,
 } from "@/utils/faculty-sections";
 import { normalizeSemester } from "@/utils/departments";
+import { canonicalSection, canonicalSectionList } from "@/utils/section-codes";
 import { isMultiPortalEmail } from "@/utils/multi-portal";
 import { storeFile, type UploadedFile } from "../../courses/services/file-storage";
 
@@ -33,7 +32,12 @@ export interface MaterialUser {
 	email?: string | null;
 	section?: string | null;
 	semester?: string | null;
+	department?: string | null;
 }
+
+/** The user's own section(s) as DEPT-LETTER codes (older profiles may store just "A"). */
+const ownSectionsOf = (u: MaterialUser) => canonicalSectionList(u.section, u.department);
+const studentSectionOf = (u: MaterialUser) => canonicalSection(u.section, u.department) ?? normalizeSectionCode(u.section);
 
 const isUnrestricted = (u: MaterialUser) => u.role === "admin" || isMultiPortalEmail(u.email);
 const isStaff = (u: MaterialUser) => u.role === "faculty" || u.role === "admin";
@@ -61,10 +65,10 @@ export const createMaterialSchema = z.object({
 function canView(user: MaterialUser, m: { section: string; semester: string | null; uploadedById: string }) {
 	if (isUnrestricted(user)) return true;
 	if (user.role === "faculty") {
-		return m.uploadedById === user.id || m.section === ALL_SECTIONS || canSeeStudentSection(user, m.section);
+		return m.uploadedById === user.id || m.section === ALL_SECTIONS || ownSectionsOf(user).includes(m.section);
 	}
 	// Students
-	const sectionOk = m.section === ALL_SECTIONS || m.section === normalizeSectionCode(user.section);
+	const sectionOk = m.section === ALL_SECTIONS || m.section === studentSectionOf(user);
 	const semesterOk = !m.semester || m.semester === normalizeSemester(user.semester);
 	return sectionOk && semesterOk;
 }
@@ -73,10 +77,10 @@ export async function listMaterials(user: MaterialUser) {
 	let where = {};
 	if (!isUnrestricted(user)) {
 		if (user.role === "faculty") {
-			const sections = facultySectionsOf(user) ?? [];
+			const sections = ownSectionsOf(user);
 			where = { OR: [{ uploadedById: user.id }, { section: { in: [...sections, ALL_SECTIONS] } }] };
 		} else {
-			const own = normalizeSectionCode(user.section);
+			const own = studentSectionOf(user);
 			if (!own) return [];
 			const semester = normalizeSemester(user.semester);
 			where = {
@@ -101,7 +105,8 @@ export async function createMaterial(user: MaterialUser, input: unknown, file: U
 		throw new AppError(parsed.error.issues[0]?.message ?? "Invalid material details.", HTTP_STATUS.BAD_REQUEST);
 	}
 	const { title, description } = parsed.data;
-	const section = normalizeSectionCode(parsed.data.section);
+	const rawSection = normalizeSectionCode(parsed.data.section);
+	const section = rawSection === ALL_SECTIONS ? rawSection : (canonicalSection(rawSection, user.department) ?? rawSection);
 	const semester = parsed.data.semester ? normalizeSemester(parsed.data.semester) : null;
 	if (parsed.data.semester && !semester) {
 		throw new AppError("Semester must be between 1 and 8.", HTTP_STATUS.BAD_REQUEST);
@@ -115,7 +120,7 @@ export async function createMaterial(user: MaterialUser, input: unknown, file: U
 		if (!SECTION_CODE_RE.test(section)) {
 			throw new AppError("Invalid section code. Use the format CSE-A, ECE-B, …", HTTP_STATUS.BAD_REQUEST);
 		}
-		if (!canSeeStudentSection(user, section)) {
+		if (!isUnrestricted(user) && !ownSectionsOf(user).includes(section)) {
 			throw new AppError(`You can only share materials with your own sections (not ${section}).`, HTTP_STATUS.FORBIDDEN);
 		}
 	}

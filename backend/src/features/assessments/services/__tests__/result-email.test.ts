@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { PDFDocument } from "pdf-lib";
 import { buildResultEmail } from "../result-email";
+import { buildResultPdf } from "../result-pdf";
 
 const base = {
 	studentName: "Asha <Rao>",
@@ -23,10 +25,8 @@ describe("buildResultEmail", () => {
 		expect(r.html).toContain("Integrity Verified");
 		expect(r.html).toContain("IOS-AB12-123456");
 		expect(r.text).toContain("Score: 6.5 / 8 (81%) — Passed");
-		expect(r.certificateFile).toBe("IntegrityOS-Certificate-IOS-AB12-123456.html");
-		expect(r.certificateHtml).toContain("Certificate of Completion");
-		expect(r.certificateHtml).not.toContain("PROVISIONAL</div>");
-		expect(r.certificateHtml).not.toContain("window.print(); }, 250");
+		expect(r.attachmentName).toBe("IntegrityOS-Results-Certificate-IOS-AB12-123456.pdf");
+		expect(r.html).toContain("attached as a PDF");
 	});
 
 	it("escapes names and flags answers still under review", () => {
@@ -41,12 +41,43 @@ describe("buildResultEmail", () => {
 		expect(r.html).toContain("Asha &lt;Rao&gt;".split(" ")[0]);
 		expect(r.html).toContain("1 answer is still under faculty review");
 		expect(r.html).toContain("Below pass mark");
-		expect(r.certificateHtml).toContain('class="provisional">PROVISIONAL');
+
 	});
 
 	it("never certifies a high-risk attempt as verified", () => {
 		const r = buildResultEmail({ ...base, attempt: { ...base.attempt, integrityScore: 95, riskLevel: "high" }, questions: [] });
 		expect(r.html).toContain("Under Faculty Review");
 		expect(r.html).not.toContain("Integrity Verified");
+	});
+});
+
+describe("buildResultPdf", () => {
+	const input = {
+		studentName: "Asha Rao",
+		rollNumber: "AP23110010001",
+		assessment: { ...base.assessment },
+		attempt: base.attempt,
+		questions: [
+			{ order: 0, type: "multiple-choice", points: 2, awarded: 2, underReview: false },
+			{ order: 1, type: "coding", points: 6, awarded: null, underReview: true },
+		],
+	};
+
+	it("produces a 2-page PDF (certificate + results)", async () => {
+		const bytes = await buildResultPdf(input);
+		expect(Buffer.from(bytes.subarray(0, 5)).toString()).toBe("%PDF-");
+		const doc = await PDFDocument.load(bytes);
+		expect(doc.getPageCount()).toBe(2);
+		const [cert, results] = doc.getPages();
+		expect(cert.getWidth()).toBeGreaterThan(cert.getHeight()); // landscape certificate
+		expect(results.getHeight()).toBeGreaterThan(results.getWidth()); // portrait results
+		expect(doc.getTitle()).toContain("Asha Rao");
+	});
+
+	it("handles names outside the Latin alphabet and long question lists", async () => {
+		const many = Array.from({ length: 70 }, (_, i) => ({ order: i, type: "descriptive", points: 1, awarded: 1, underReview: false }));
+		const bytes = await buildResultPdf({ ...input, studentName: "చరణ్ బాలాజీ Neelampalli", questions: many });
+		const doc = await PDFDocument.load(bytes);
+		expect(doc.getPageCount()).toBeGreaterThanOrEqual(3); // results continue on another page
 	});
 });

@@ -7,6 +7,7 @@ import { env } from "../config/env";
 import { prisma } from "../database";
 import { verifyFace } from "../features/proctoring/services/proctoring-service";
 import { sendEmail } from "../services/mail";
+import { maskEmail } from "../features/authentication/services/two-factor-service";
 import { requestContextStore } from "../utils/request-context";
 
 export function isAuthorizedInstitutionalEmail(email: string): boolean {
@@ -20,6 +21,15 @@ export const auth = betterAuth({
 	session: {
 		expiresIn: 60 * 60 * 24 * 1, // 1 day session duration
 		updateAge: 60 * 60 * 12, // update age 12 hours
+		additionalFields: {
+			// Set at creation for accounts with 2FA on; cleared by /api/authentication/2fa/verify.
+			twoFactorPending: {
+				type: "boolean",
+				required: false,
+				defaultValue: false,
+				input: false,
+			},
+		},
 	},
 	logger: {
 		level: "warn",
@@ -67,6 +77,22 @@ export const auth = betterAuth({
 		},
 	},
 	databaseHooks: {
+		session: {
+			create: {
+				// Every new session of an account with two-step verification on starts
+				// "pending", whatever the sign-in method (password, Google, magic link).
+				before: async (session) => {
+					const owner = await prisma.user.findUnique({
+						where: { id: session.userId },
+						select: { twoFactorEnabled: true },
+					});
+					if (owner?.twoFactorEnabled) {
+						return { data: { ...session, twoFactorPending: true } };
+					}
+					return { data: session };
+				},
+			},
+		},
 		user: {
 			create: {
 				before: async (user) => {
@@ -204,6 +230,23 @@ export const auth = betterAuth({
 		}),
 		after: createAuthMiddleware(async (ctx) => {
 			const path = ctx.path;
+
+			// A session waiting for its 2FA code is not signed in yet: tell the client
+			// to show the code screen instead of returning the user.
+			if (path.includes("/get-session")) {
+				const returned = ctx.context.returned as
+					| { session?: { twoFactorPending?: boolean }; user?: { email?: string } }
+					| null
+					| undefined;
+				if (returned?.session?.twoFactorPending) {
+					return ctx.json({
+						session: null,
+						user: null,
+						twoFactorRequired: true,
+						maskedEmail: maskEmail(returned.user?.email ?? ""),
+					});
+				}
+			}
 
 			// Strict domain restriction check for new sessions (email/social logins)
 			if (ctx.context.newSession) {

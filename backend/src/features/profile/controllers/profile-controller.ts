@@ -4,7 +4,9 @@ import { HTTP_STATUS } from "../../../constants/http-status";
 import { prisma } from "../../../database";
 import { AppError } from "../../../utils/app-error";
 import { validateFacultySections } from "../../../utils/faculty-sections";
+import { canonicalSectionList, resolveStudentSection } from "../../../utils/section-codes";
 import { sendSuccess } from "../../../utils/response";
+import { assertToggleCode } from "../../authentication/controllers/two-factor-controller";
 
 import { verifyFace } from "../../proctoring/services/proctoring-service";
 
@@ -126,13 +128,15 @@ export async function updateProfile(req: Request, res: Response): Promise<void> 
 	}
 
 	// Faculty manage their own 1–3 teaching sections; students keep a single section.
+	// Stored as DEPT-LETTER ("CSE-A"); a bare "A" is resolved from the department.
 	const rawSection = req.body.sections ?? section;
+	const effectiveDepartment = department !== undefined ? department : user.department;
 	const nextSection =
 		rawSection === undefined
 			? user.section
 			: user.role === "faculty"
-				? validateFacultySections(rawSection)
-				: rawSection;
+				? validateFacultySections(canonicalSectionList(rawSection, effectiveDepartment))
+				: resolveStudentSection(rawSection, effectiveDepartment);
 
 	// Update user database record
 	const updated = await prisma.user.update({
@@ -343,12 +347,18 @@ export async function toggle2FA(req: Request, res: Response): Promise<void> {
 	const userAuth = getAuthUser(req);
 	const userId = userAuth.id;
 
-	const { enabled } = req.body;
+	const enabled = req.body?.enabled === true;
 
 	const user = await prisma.user.findUnique({ where: { id: userId } });
 	if (!user) {
 		throw new AppError("User not found", HTTP_STATUS.NOT_FOUND);
 	}
+	if (user.twoFactorEnabled === enabled) {
+		throw new AppError(enabled ? "Two-step verification is already on." : "Two-step verification is already off.", HTTP_STATUS.BAD_REQUEST);
+	}
+	// The change must be confirmed with the code emailed by POST /api/profile/2fa/request,
+	// proving the inbox works before sign-in starts depending on it.
+	await assertToggleCode(userId, enabled, req.body?.code);
 
 	const updated = await prisma.user.update({
 		where: { id: userId },

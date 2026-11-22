@@ -28,6 +28,8 @@ import {
 	Library,
 } from "lucide-react";
 import { StudyMaterialsPanel } from "../app/components/study/StudyMaterialsPanel";
+import { FacultyMessagingView } from "../app/pages/FacultyMessagingView";
+import { Megaphone as MessagesTabIcon } from "lucide-react";
 import { Button } from "../app/components/ui/button";
 import { Input } from "../app/components/ui/input";
 import { toast } from "sonner";
@@ -73,6 +75,7 @@ export function AdminPanelView({ user, handleBack, parseUserAgent }: AdminPanelV
 		| "audit"
 		| "feedback"
 		| "materials"
+		| "messages"
 		| "settings"
 	>("overview");
 
@@ -1011,6 +1014,10 @@ export function AdminPanelView({ user, handleBack, parseUserAgent }: AdminPanelV
 			],
 		},
 		{
+			label: "Communication",
+			items: [{ id: "messages", label: "Messages & Announcements", icon: MessagesTabIcon }],
+		},
+		{
 			label: "Operations",
 			items: [
 				{ id: "support", label: "Support Operations", icon: MessageSquare },
@@ -1053,7 +1060,16 @@ export function AdminPanelView({ user, handleBack, parseUserAgent }: AdminPanelV
 						<span className="sr-only sm:hidden">Log out</span>
 					</button>
 				</header>
-				<div key={activeTab} className="portal-page-enter p-6 md:p-10 max-w-full">
+				<div
+					key={activeTab}
+					className={
+						activeTab === "messages"
+							? "portal-page-enter portal-full h-[calc(100dvh-3.5rem)] min-h-0 flex flex-col overflow-hidden"
+							: "portal-page-enter p-6 md:p-10 max-w-full"
+					}
+				>
+				{/* College announcements, class groups and direct messages (admins post to the whole college) */}
+				{activeTab === "messages" && <FacultyMessagingView />}
 				<AnimatePresence mode="wait">
 					{/* STUDENT ENROLMENT VERIFICATION */}
 					{activeTab === "verification" && <AdminVerificationPanel />}

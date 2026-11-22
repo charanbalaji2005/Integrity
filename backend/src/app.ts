@@ -14,6 +14,7 @@ import { courseRouter } from "./features/courses/routes/course-routes";
 import { examFeedbackRouter } from "./features/exam-feedback/routes/exam-feedback-routes";
 import { facultyAssistantRouter } from "./features/faculty-assistant/routes/faculty-assistant-routes";
 import { codingRouter } from "./features/coding/routes/coding-routes";
+import { isTwoFactorPending } from "./features/authentication/services/two-factor-service";
 import { healthRouter } from "./features/health/routes/health-routes";
 import { notificationRouter } from "./features/notifications/routes/notification-routes";
 import { plagiarismRouter } from "./features/plagiarism/routes/plagiarism-routes";
@@ -327,6 +328,7 @@ app.get("/api/auth/session", async (req, res) => {
 		const sessionData = await auth.api.getSession({
 			headers: new Headers(req.headers as any),
 		});
+		if (isTwoFactorPending(sessionData)) return res.json({ session: null, user: null, twoFactorRequired: true });
 		return res.json(sessionData);
 	} catch (err: any) {
 		console.error("Error in fallback session endpoint:", err);
@@ -356,7 +358,7 @@ app.use(async (req, res, next) => {
 			let role: string | null = null;
 			try {
 				const sessionData = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
-				if (sessionData?.user) {
+				if (sessionData?.user && !isTwoFactorPending(sessionData)) {
 					const dbUser = await prisma.user.findUnique({
 						where: { id: sessionData.user.id },
 						select: { role: true },

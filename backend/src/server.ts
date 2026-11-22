@@ -12,6 +12,10 @@ process.on("uncaughtException", (error) => {
 	console.error("[Process] Uncaught Exception:", error);
 });
 
+process.on("exit", (code) => {
+	console.log(`[Process] Node process exiting with code: ${code}`);
+});
+
 /**
  * Startup order matters on Render:
  *  1. Open the HTTP port immediately. Render's port scan / health check must

@@ -33,6 +33,7 @@ import {
   Mail,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
+import { ClassmatesPane, type Classmate, type FriendRequestRow } from "../components/chat/ClassmatesPane";
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
 
@@ -41,7 +42,7 @@ export function StudentMessagingView() {
   const [socket, setSocket] = useState<Socket | null>(null);
 
   // Active Chats & Navigation
-  const [activeTab, setActiveTab] = useState<"college" | "class" | "faculty" | "dm">("college");
+  const [activeTab, setActiveTab] = useState<"college" | "class" | "faculty" | "classmates" | "dm">("college");
   const [activeDmRecipient, setActiveDmRecipient] = useState<any | null>(null);
   
   // Data States
@@ -49,6 +50,12 @@ export function StudentMessagingView() {
   const [facultyList, setFacultyList] = useState<any[]>([]);
   const [contacts, setContacts] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
+  // Classmates & friend requests
+  const [classmates, setClassmates] = useState<Classmate[]>([]);
+  const [classSection, setClassSection] = useState<string | null>(null);
+  const [incomingFriendRequests, setIncomingFriendRequests] = useState<FriendRequestRow[]>([]);
+  const [classmatesLoading, setClassmatesLoading] = useState(false);
+  const [friendTick, setFriendTick] = useState(0);
   
   // UI states
   const [messageText, setMessageText] = useState("");
@@ -161,6 +168,13 @@ export function StudentMessagingView() {
       }
     });
 
+    // Friend requests sent / accepted by classmates arrive live.
+    socketInstance.on("friend-request", (data: { type: string; from?: { name?: string } }) => {
+      if (data.type === "received") toast.info(`${data.from?.name || "A classmate"} sent you a friend request.`);
+      if (data.type === "accepted") toast.success("Your friend request was accepted.");
+      setFriendTick((t) => t + 1);
+    });
+
     socketInstance.on("user-status", (data: { userId: string; status: "online" | "offline" }) => {
       setOnlineUsers((prev) => {
         const next = new Set(prev);
@@ -258,11 +272,26 @@ export function StudentMessagingView() {
     } catch (err) {
       console.error("Failed to fetch lists:", err);
     }
+    // 4. Classmates and friend requests
+    setClassmatesLoading(true);
+    try {
+      const [cmRes, frRes] = await Promise.all([apiFetch("/api/chat/classmates"), apiFetch("/api/chat/friend-requests")]);
+      if (cmRes.ok) {
+        const cm = (await cmRes.json()).data;
+        setClassmates(cm?.classmates || []);
+        setClassSection(cm?.section ?? null);
+      }
+      if (frRes.ok) setIncomingFriendRequests((await frRes.json()).data?.incoming || []);
+    } catch (err) {
+      console.error("Failed to fetch classmates:", err);
+    } finally {
+      setClassmatesLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchLists();
-  }, [profile?.id, activeTab]);
+  }, [profile?.id, activeTab, friendTick]);
 
   // Scroll to bottom of chat
   useEffect(() => {
@@ -585,7 +614,7 @@ export function StudentMessagingView() {
     el.style.height = `${Math.min(el.scrollHeight, 132)}px`;
   }, [messageText]);
 
-  const openChat = (tab: "college" | "class" | "faculty" | "dm", contact?: any) => {
+  const openChat = (tab: "college" | "class" | "faculty" | "classmates" | "dm", contact?: any) => {
     if (contact) setActiveDmRecipient(contact);
     setActiveTab(tab);
     setOpenMenuId(null);
@@ -659,7 +688,7 @@ export function StudentMessagingView() {
       title: contact.name,
       avatar: initials(contact.name),
       online: onlineUsers.has(contact.id),
-      fallback: contact.department || "Faculty",
+      fallback: contact.relation === "friend" ? `Classmate${contact.rollNumber ? ` · ${contact.rollNumber}` : ""}` : contact.department || "Faculty",
       active: activeTab === "dm" && activeDmRecipient?.id === contact.id,
     });
   });
@@ -970,12 +999,43 @@ export function StudentMessagingView() {
                 </button>
               </li>
             )}
+
+            {/* Classmates row */}
+            {matches("Classmates", "friends", "friend requests", profile?.section) && (
+              <li>
+                <button
+                  type="button"
+                  onClick={() => openChat("classmates")}
+                  aria-current={activeTab === "classmates" ? "true" : undefined}
+                  className={`w-full flex items-center gap-3 px-3 min-h-[72px] text-left transition-colors ${focusRing} focus-visible:ring-inset ${
+                    activeTab === "classmates" ? "bg-[#f0f0f0]" : "hover:bg-[#fafafa]"
+                  }`}
+                >
+                  <div className="size-12 rounded-full bg-[#f4f4f4] border border-dashed border-[#c4c4c4] flex items-center justify-center text-[#676767] shrink-0" aria-hidden="true">
+                    <Users className="size-5" />
+                  </div>
+                  <div className="flex-1 min-w-0 py-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[14.5px] font-semibold text-[#111111]">Classmates</span>
+                      {incomingFriendRequests.length > 0 && (
+                        <span className="text-[10px] font-bold text-white bg-[#1a1917] rounded-full px-2 py-0.5 shrink-0">
+                          {incomingFriendRequests.length} request{incomingFriendRequests.length > 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[12.5px] text-[#676767] block truncate">
+                      {classSection ? `${classmates.length} in ${classSection} · add friends to chat` : "Find and add classmates"}
+                    </span>
+                  </div>
+                </button>
+              </li>
+            )}
           </ul>
 
           {contacts.length === 0 && !q && (
             <div className="mx-3 my-4 rounded-xl border border-dashed border-[#dedede] bg-[#fafafa] p-4 text-center">
               <MessageCircle className="size-5 text-[#8a8a8a] mx-auto" aria-hidden="true" />
-              <p className="text-[12px] text-[#676767] mt-1.5">No direct chats yet. Request approval from a faculty member to start one.</p>
+              <p className="text-[12px] text-[#676767] mt-1.5">No direct chats yet. Request a chat with a faculty member, or add a classmate as a friend.</p>
             </div>
           )}
           {chatRows.length === 0 && q && (
@@ -986,10 +1046,23 @@ export function StudentMessagingView() {
 
       {/* ========================= CONVERSATION PANE ========================= */}
       <section
-        aria-label={activeTab === "faculty" ? "Faculty directory" : headerInfo?.title || "Conversation"}
+        aria-label={activeTab === "faculty" ? "Faculty directory" : activeTab === "classmates" ? "Classmates" : headerInfo?.title || "Conversation"}
         className={`${mobileShowChat ? "flex" : "hidden"} md:flex flex-1 min-w-0 flex-col min-h-0 bg-[#f4f4f2]`}
       >
-        {activeTab === "faculty" ? (
+        {activeTab === "classmates" ? (
+          <ClassmatesPane
+            section={classSection}
+            classmates={classmates}
+            incoming={incomingFriendRequests}
+            loading={classmatesLoading}
+            backButton={backButton}
+            onChanged={() => setFriendTick((t) => t + 1)}
+            onMessage={(c) => {
+              const contact = contacts.find((x) => x.id === c.id) ?? { ...c, relation: "friend" };
+              openChat("dm", contact);
+            }}
+          />
+        ) : activeTab === "faculty" ? (
           // ------------------------- Faculty Directory -------------------------
           <>
             <header className="h-16 shrink-0 px-4 flex items-center gap-3 bg-[#fafafa] border-b border-[#ebebeb]">
@@ -1460,7 +1533,7 @@ export function StudentMessagingView() {
                 {activeTab === "college" ? (
                   <div className="shrink-0 px-4 py-3 bg-[#fafafa] border-t border-[#ebebeb] flex items-center justify-center gap-2 text-[12px] text-[#676767] select-none">
                     <Lock className="size-3.5 shrink-0" aria-hidden="true" />
-                    Only Administrators and Faculty members can post announcements to this channel.
+                    Only administrators can post announcements to this channel.
                   </div>
                 ) : (
                   <form ref={formRef} onSubmit={handleSendMessage} className="shrink-0 bg-[#fafafa] border-t border-[#ebebeb] px-2 md:px-4 py-2">

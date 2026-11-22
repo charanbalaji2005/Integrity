@@ -595,6 +595,8 @@ export const ProfileCenter: React.FC<ProfileCenterProps> = ({ isOpen, onClose, h
                               disabled={!isEditing}
                               value={section}
                               onChange={(e) => setSection(e.target.value)}
+                              placeholder="e.g. CSE-A"
+                              title="Department code and section letter, e.g. CSE-A"
                               className="h-9 px-3 border border-[#dedede] rounded-xl bg-zinc-50/50 disabled:bg-zinc-50 disabled:opacity-70 focus:outline-none"
                             />
                           </div>

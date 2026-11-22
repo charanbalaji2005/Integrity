@@ -47,9 +47,10 @@ export async function postAnnouncement(req: Request, res: Response): Promise<voi
 	let section: string | null = null;
 
 	if (target === "college") {
-		if (!unrestricted) {
+		// The college-wide notice board is reserved for administrators.
+		if (user.role !== "admin") {
 			throw new AppError(
-				"Faculty can only broadcast to their own sections. Choose one of your sections.",
+				"Only administrators can post college announcements. Choose one of your sections.",
 				HTTP_STATUS.FORBIDDEN,
 			);
 		}

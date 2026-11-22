@@ -14,6 +14,13 @@ import {
 	reactToMessage,
 } from "../controllers/chat-controller";
 import { postAnnouncement } from "../controllers/announcement-controller";
+import {
+	deleteFriend,
+	friendRequestAction,
+	getClassmates,
+	getFriendRequests,
+	postFriendRequest,
+} from "../controllers/friend-controller";
 
 const router: IRouter = Router();
 
@@ -55,5 +62,12 @@ router.post("/requests", createChatRequest);
 
 // POST /api/chat/requests/:id/action
 router.post("/requests/:id/action", handleChatRequestAction);
+
+// Student friend requests (classmates only)
+router.get("/classmates", getClassmates);
+router.get("/friend-requests", getFriendRequests);
+router.post("/friend-requests", postFriendRequest);
+router.post("/friend-requests/:id/action", friendRequestAction);
+router.delete("/friends/:userId", deleteFriend);
 
 export { router as chatRouter };

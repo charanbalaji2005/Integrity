@@ -43,20 +43,22 @@ model User {
   verificationStatus String    @default("unverified")
   verifiedAt         DateTime?
 
-  sessions             Session[]
-  accounts             Account[]
-  assessments          Assessment[]
-  attempts             AssessmentAttempt[]
-  sentMessages         ChatMessage[]         @relation("SentMessages")
-  receivedMessages     ChatMessage[]         @relation("ReceivedMessages")
-  sentChatRequests     ChatRequest[]         @relation("SentRequests")
-  receivedChatRequests ChatRequest[]         @relation("ReceivedRequests")
-  passwordHistory      PasswordHistory[]
-  studentVerifications StudentVerification[]
-  plagiarismDocuments  PlagiarismDocument[]
-  plagiarismReports    PlagiarismReport[]
-  supportStaff         SupportStaff?
-  courses              Course[]
+  sessions               Session[]
+  accounts               Account[]
+  assessments            Assessment[]
+  attempts               AssessmentAttempt[]
+  sentMessages           ChatMessage[]         @relation("SentMessages")
+  receivedMessages       ChatMessage[]         @relation("ReceivedMessages")
+  sentChatRequests       ChatRequest[]         @relation("SentRequests")
+  receivedChatRequests   ChatRequest[]         @relation("ReceivedRequests")
+  friendRequestsSent     FriendRequest[]       @relation("FriendRequestsSent")
+  friendRequestsReceived FriendRequest[]       @relation("FriendRequestsReceived")
+  passwordHistory        PasswordHistory[]
+  studentVerifications   StudentVerification[]
+  plagiarismDocuments    PlagiarismDocument[]
+  plagiarismReports      PlagiarismReport[]
+  supportStaff           SupportStaff?
+  courses                Course[]
 
   @@map("users")
 }
@@ -79,12 +81,36 @@ model Session {
   expiresAt DateTime
   ipAddress String?
   userAgent String?
+  /// True until the second step (emailed code) is completed for accounts with 2FA on.
+  /// Pending sessions are treated as signed out everywhere except the 2FA endpoints.
+  twoFactorPending Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
+}
+
+/// One-time 6-digit codes for two-step verification (stored hashed).
+model TwoFactorCode {
+  id          String   @id @default(cuid())
+  userId      String
+  /// "login" | "enable" | "disable"
+  purpose     String
+  /// Session the login code belongs to ("" for enable/disable).
+  sessionKey  String   @default("")
+  codeHash    String
+  attempts    Int      @default(0)
+  expiresAt   DateTime
+  sentAt      DateTime @default(now())
+  /// Resend rate limit window
+  windowStart DateTime @default(now())
+  sendCount   Int      @default(1)
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, purpose, sessionKey])
+  @@map("two_factor_codes")
 }
 
 model Account {
@@ -199,23 +225,23 @@ model Assessment {
 }
 
 model Question {
-  id              String       @id @default(cuid())
+  id              String           @id @default(cuid())
   assessmentId    String
-  assessment      Assessment   @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  assessment      Assessment       @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   type            String // "multiple-choice" | "descriptive" | "coding" | "file-upload"
   text            String
   options         String? // JSON string for MCQ options (e.g. ["A", "B", "C"])
   correctAnswer   String?
-  points          Float        @default(1)
-  difficulty      String       @default("medium") // "easy" | "medium" | "hard"
+  points          Float            @default(1)
+  difficulty      String           @default("medium") // "easy" | "medium" | "hard"
   learningOutcome String?
-  order           Int          @default(0)
-  negativeMarks   Float        @default(0)
+  order           Int              @default(0)
+  negativeMarks   Float            @default(0)
   explanation     String?
   /// JSON: type-specific settings (coding limits/test cases, blanks, image ids, …)
   config          String?
   topicId         String?
-  topic           CourseTopic? @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  topic           CourseTopic?     @relation(fields: [topicId], references: [id], onDelete: SetNull)
   answers         Answer[]
   codeDrafts      CodeDraft[]
   codeExecutions  CodeExecution[]
@@ -283,6 +309,9 @@ model AssessmentAttempt {
 
   // Continuous session recording (every segment, not only violations)
   recordingSegments ExamRecordingSegment[]
+
+  /// Set when the results & certificate email is claimed for sending (exactly-once guard).
+  resultEmailSentAt DateTime?
 
   // Post-exam feedback collected by the feedback agent (one per attempt)
   examFeedback ExamFeedback?
@@ -1245,4 +1274,22 @@ model CodeEvaluationJob {
 
   @@index([status, nextRunAt])
   @@map("code_evaluation_jobs")
+}
+
+/// Student-to-student friend request between classmates. An accepted request
+/// lets the two students message each other privately.
+model FriendRequest {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  status     String   @default("pending") // "pending" | "accepted" | "declined" | "cancelled"
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  sender   User @relation("FriendRequestsSent", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("FriendRequestsReceived", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId, status])
+  @@map("friend_requests")
 }

@@ -17,6 +17,27 @@
   },
   "selfHealingLogs": [
     {
+      "id": "sh-tq2lm8n",
+      "timestamp": "2026-11-19T01:02:56.368Z",
+      "component": "WebSocket Proctoring Stream",
+      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-c39061h",
+      "timestamp": "2026-11-19T01:00:56.338Z",
+      "component": "WebSocket Proctoring Stream",
+      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
+      "status": "HEALED"
+    },
+    {
+      "id": "sh-ucl4vke",
+      "timestamp": "2026-11-19T00:59:26.305Z",
+      "component": "Self-Healing Orchestrator",
+      "action": "Self-Healing background service successfully initialized.",
+      "status": "MONITOR"
+    },
+    {
       "id": "sh-7vpymob",
       "timestamp": "2026-11-19T00:08:08.736Z",
       "component": "Self-Healing Orchestrator",
@@ -694,27 +715,6 @@
       "component": "WebSocket Proctoring Stream",
       "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
       "status": "HEALED"
-    },
-    {
-      "id": "sh-mu971b3",
-      "timestamp": "2026-11-18T00:04:32.256Z",
-      "component": "Self-Healing Orchestrator",
-      "action": "Self-Healing background service successfully initialized.",
-      "status": "MONITOR"
-    },
-    {
-      "id": "sh-5qr5gqm",
-      "timestamp": "2026-11-18T00:04:23.965Z",
-      "component": "Self-Healing Orchestrator",
-      "action": "Self-Healing background service successfully initialized.",
-      "status": "MONITOR"
-    },
-    {
-      "id": "sh-hapbi96",
-      "timestamp": "2026-11-18T00:04:03.739Z",
-      "component": "Self-Healing Orchestrator",
-      "action": "Self-Healing background service successfully initialized.",
-      "status": "MONITOR"
     }
   ]
 }

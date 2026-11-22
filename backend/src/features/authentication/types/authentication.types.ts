@@ -34,4 +34,14 @@ export interface LoginResult {
 		token: string;
 		expiresAt: Date;
 	};
+	/**
+	 * Present when the account has two-step verification on: the session token
+	 * is issued but stays unusable until POST /api/authentication/2fa/verify.
+	 */
+	twoFactor?: {
+		required: true;
+		maskedEmail: string;
+		expiresInSeconds: number;
+		resendInSeconds: number;
+	};
 }

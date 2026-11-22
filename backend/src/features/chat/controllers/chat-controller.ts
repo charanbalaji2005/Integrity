@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { listFriends } from "../services/relationships";
 import { HTTP_STATUS } from "../../../constants/http-status";
 import { prisma } from "../../../database";
 import { getIO } from "../../../providers/socket";
@@ -177,7 +178,10 @@ export async function getContacts(req: Request, res: Response): Promise<void> {
 				},
 			},
 		});
-		contacts = approvedRequests.map((r) => r.faculty);
+		contacts = [
+			...approvedRequests.map((r) => (r.faculty ? { ...r.faculty, relation: "faculty" } : null)),
+			...(await listFriends(userId)),
+		];
 	}
 
 	// Remove duplicates in case of multiple requests

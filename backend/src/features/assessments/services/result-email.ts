@@ -1,12 +1,16 @@
 import { env } from "../../../config/env";
 import { prisma } from "../../../database";
 import { mailConfigured, sendEmail } from "../../../services/mail";
-import { buildCertificateHtml } from "./certificate-template";
+import { buildResultPdf } from "./result-pdf";
 
 /**
- * Emails a student their results and completion certificate once their attempt
- * has been evaluated. Sent at most once per attempt (recorded as a timeline
- * event), and never throws: a mail outage must not fail the evaluation job.
+ * Emails a student their results and completion certificate (one PDF attachment)
+ * once their attempt has been evaluated.
+ *
+ * Exactly once per attempt: the send is claimed atomically by setting
+ * assessment_attempts.resultEmailSentAt (only one worker/instance can win), and the
+ * claim is released only if the mail server rejects the message. Never throws: a
+ * mail outage must not fail the evaluation job.
  */
 
 const SENT_EVENT = "Results Emailed";
@@ -62,8 +66,8 @@ export interface ResultEmailContent {
 	subject: string;
 	html: string;
 	text: string;
-	certificateHtml: string;
-	certificateFile: string;
+	/** File name for the attached results + certificate PDF. */
+	attachmentName: string;
 }
 
 /** Builds the email (pure; exported for tests and previews). */
@@ -167,7 +171,7 @@ export function buildResultEmail(input: {
       <tr><td style="padding:16px 18px">
         <div style="font:700 14px Arial,Helvetica,sans-serif;color:#1c1917">📜 Your completion certificate is attached</div>
         <div style="font:13px/1.6 Arial,Helvetica,sans-serif;color:#57534e;margin-top:4px">
-          Open the attached file and choose <em>Print / Save as PDF</em> to keep a copy.<br>
+          Your certificate and full results are attached as a PDF.<br>
           Certificate No. <strong style="font-family:Consolas,monospace;color:#1c1917">${esc(certNo)}</strong> · Verification code <strong style="font-family:Consolas,monospace;color:#1c1917">${esc(code)}</strong>
         </div>
       </td></tr>
@@ -194,46 +198,34 @@ export function buildResultEmail(input: {
 		`Integrity index: ${integrity}% — ${outcome.label}`,
 		pending > 0 ? `${pending} answer(s) are still under faculty review; your final score may change.` : "",
 		"",
-		`Certificate No. ${certNo} · Verification code ${code} (certificate attached)`,
+		`Certificate No. ${certNo} · Verification code ${code} (certificate and results attached as PDF)`,
 		`View full results: ${portalUrl}`,
 	]
 		.filter((l, i, arr) => l !== "" || arr[i - 1] !== "")
 		.join("\n");
 
-	const certificateHtml = buildCertificateHtml({
-		studentName,
-		integrityScore: integrity,
-		riskLevel: t.riskLevel,
-		certificateNumber: t.certificateNumber,
-		verificationCode: t.verificationCode,
-		issuedAt: t.submittedAt,
-		provisional: pending > 0,
-		assessment: { title: a.title, institutionName: a.institutionName, facultyName: a.facultyName },
-	});
 	const safe = (s: string) => s.replace(/[^\w-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
 
 	return {
 		subject: `Your results & certificate — ${a.title}`,
 		html,
 		text,
-		certificateHtml,
-		certificateFile: `IntegrityOS-Certificate-${safe(certNo) || "pending"}.html`,
+		attachmentName: `IntegrityOS-Results-Certificate-${safe(certNo) || "pending"}.pdf`,
 	};
 }
 
 export async function sendResultEmail(attemptId: string): Promise<"sent" | "skipped" | "failed"> {
-	try {
-		if (!mailConfigured()) {
-			console.warn("[ResultEmail] SMTP is not configured; skipping results email.");
-			return "skipped";
-		}
-		const already = await prisma.proctoringTimelineEvent.count({ where: { attemptId, event: SENT_EVENT } });
-		if (already) return "skipped";
+	if (!mailConfigured()) {
+		console.warn("[ResultEmail] SMTP is not configured; skipping results email.");
+		return "skipped";
+	}
 
-		const attempt = await prisma.assessmentAttempt.findUnique({
+	// 1. Load and check eligibility before claiming.
+	const attempt = await prisma.assessmentAttempt
+		.findUnique({
 			where: { id: attemptId },
 			include: {
-				student: { select: { email: true, name: true } },
+				student: { select: { email: true, name: true, rollNumber: true } },
 				assessment: {
 					select: {
 						title: true,
@@ -247,9 +239,19 @@ export async function sendResultEmail(attemptId: string): Promise<"sent" | "skip
 				},
 				answers: { select: { questionId: true, aiGrade: true, manualGrade: true, isFlagged: true } },
 			},
-		});
-		if (!attempt || attempt.status === "reset" || !attempt.student?.email || !attempt.certificateNumber) return "skipped";
+		})
+		.catch(() => null);
+	if (!attempt || attempt.status === "reset" || !attempt.student?.email || !attempt.certificateNumber) return "skipped";
+	if (attempt.resultEmailSentAt) return "skipped";
 
+	// 2. Atomic claim: only one caller (across workers and server instances) gets count === 1.
+	const claim = await prisma.assessmentAttempt.updateMany({
+		where: { id: attemptId, resultEmailSentAt: null },
+		data: { resultEmailSentAt: new Date() },
+	});
+	if (claim.count !== 1) return "skipped";
+
+	try {
 		const byQuestion = new Map(attempt.answers.map((x) => [x.questionId, x]));
 		const questions = attempt.assessment.questions.map((q, i) => {
 			const ans = byQuestion.get(q.id);
@@ -262,13 +264,21 @@ export async function sendResultEmail(attemptId: string): Promise<"sent" | "skip
 				underReview: Boolean(ans && (awarded == null || (ans.isFlagged && ans.manualGrade == null))),
 			};
 		});
+		const studentName = attempt.studentName || attempt.student.name;
 
 		const content = buildResultEmail({
-			studentName: attempt.studentName || attempt.student.name,
+			studentName,
 			assessment: attempt.assessment,
 			attempt,
 			questions,
 			portalUrl: env.FRONTEND_URL,
+		});
+		const pdf = await buildResultPdf({
+			studentName,
+			rollNumber: attempt.student.rollNumber,
+			assessment: attempt.assessment,
+			attempt,
+			questions,
 		});
 
 		await sendEmail({
@@ -276,13 +286,15 @@ export async function sendResultEmail(attemptId: string): Promise<"sent" | "skip
 			subject: content.subject,
 			html: content.html,
 			text: content.text,
-			attachments: [{ filename: content.certificateFile, content: content.certificateHtml, contentType: "text/html; charset=utf-8" }],
+			attachments: [{ filename: content.attachmentName, content: Buffer.from(pdf), contentType: "application/pdf" }],
 		});
-		await prisma.proctoringTimelineEvent.create({
-			data: { attemptId, event: SENT_EVENT, details: JSON.stringify({ certificateNumber: attempt.certificateNumber }) },
-		});
+		await prisma.proctoringTimelineEvent
+			.create({ data: { attemptId, event: SENT_EVENT, details: JSON.stringify({ certificateNumber: attempt.certificateNumber, format: "pdf" }) } })
+			.catch(() => {});
 		return "sent";
 	} catch (err) {
+		// Not delivered — release the claim so a later evaluation can retry.
+		await prisma.assessmentAttempt.update({ where: { id: attemptId }, data: { resultEmailSentAt: null } }).catch(() => {});
 		console.error("[ResultEmail] Could not send results email:", err instanceof Error ? err.message : err);
 		return "failed";
 	}

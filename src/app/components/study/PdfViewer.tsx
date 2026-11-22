@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ChevronLeft,
   ChevronRight,
@@ -197,7 +198,8 @@ export function PdfViewer({ material, onClose }: PdfViewerProps) {
   const tool =
     "size-9 shrink-0 items-center justify-center rounded-lg text-zinc-200 transition hover:bg-white/10 hover:text-white disabled:opacity-35 disabled:hover:bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50";
 
-  return (
+  // Rendered into <body> so no transformed/filtered ancestor can turn this full-screen overlay into a boxed one.
+  return createPortal(
     <div
       ref={rootRef}
       role="dialog"
@@ -325,7 +327,8 @@ export function PdfViewer({ material, onClose }: PdfViewerProps) {
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

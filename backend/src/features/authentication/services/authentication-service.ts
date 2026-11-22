@@ -3,6 +3,9 @@ import { prisma } from "@/database";
 import { auth, isAuthorizedInstitutionalEmail } from "@/providers/auth";
 import { sendEmail } from "@/services/mail";
 import { AppError } from "@/utils/app-error";
+import { validateFacultySections } from "@/utils/faculty-sections";
+import { canonicalSectionList, resolveStudentSection } from "@/utils/section-codes";
+import { issueCode } from "./two-factor-service";
 import type {
 	ForgotPasswordPayload,
 	LoginPayload,
@@ -217,7 +220,25 @@ export async function loginWithEmailPassword(
 
 		const finalRole = dbUser?.role ?? "user";
 
+		// Two-step verification: the new session was created "pending" (see the
+		// session hook in providers/auth.ts); email the code it needs.
+		let twoFactor: LoginResult["twoFactor"];
+		if (dbUser?.twoFactorEnabled) {
+			const pending = await prisma.session.findUnique({ where: { token: result.token }, select: { id: true } });
+			if (!pending) throw new AppError("Could not start two-step verification. Please sign in again.", 500);
+			try {
+				const sent = await issueCode({ userId: dbUser.id, email: dbUser.email, purpose: "login", sessionKey: pending.id, ip: ipAddress });
+				twoFactor = { required: true, ...sent };
+			} catch (err) {
+				// Never leave a half-signed-in session behind if the code can't be sent.
+				await prisma.session.delete({ where: { id: pending.id } }).catch(() => {});
+				if (err instanceof AppError) throw err;
+				throw new AppError("We couldn't email your verification code. Please try again in a minute.", 503);
+			}
+		}
+
 		return {
+			...(twoFactor ? { twoFactor } : {}),
 			user: {
 				id: result.user.id,
 				name: result.user.name,
@@ -482,7 +503,11 @@ export async function updateUserCredentials(
 			name: name || user.name,
 			semester: semester || null,
 			branch: branch || null,
-			section: section || null,
+			// Always stored as DEPT-LETTER ("CSE-A"); faculty may list up to 3.
+			section:
+				user.role === "faculty" && section
+					? validateFacultySections(canonicalSectionList(section, department))
+					: resolveStudentSection(section, department),
 		},
 	});
 }

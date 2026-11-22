@@ -1,4 +1,5 @@
 import { fromNodeHeaders } from "better-auth/node";
+import { canDirectMessage } from "../features/chat/services/relationships";
 import type { Server as HttpServer, IncomingHttpHeaders } from "http";
 import { type Socket, Server as SocketServer } from "socket.io";
 import { env } from "../config/env";
@@ -6,6 +7,7 @@ import { prisma } from "../database";
 import { canSeeStudentSection, parseSections, sectionMonitorRoom } from "../utils/faculty-sections";
 import { isMultiPortalEmail } from "../utils/multi-portal";
 import { auth } from "./auth";
+import { isTwoFactorPending } from "../features/authentication/services/two-factor-service";
 
 /**
  * Identity attached to every socket. It is derived ONLY from a verified
@@ -99,6 +101,8 @@ async function resolveSocketIdentity(
 	// 1. Standard Better Auth session (signed cookie).
 	try {
 		const session = await auth.api.getSession({ headers: fromNodeHeaders(headers) });
+		// Sessions still waiting for their 2FA code may not open a socket.
+		if (isTwoFactorPending(session)) return null;
 		if (session?.user?.id) userId = session.user.id;
 	} catch {
 		// fall through to token lookup
@@ -118,6 +122,7 @@ async function resolveSocketIdentity(
 		for (const token of candidates) {
 			const session = await prisma.session.findUnique({ where: { token } });
 			if (session && session.expiresAt.getTime() > Date.now()) {
+				if (session.twoFactorPending) return null;
 				userId = session.userId;
 				break;
 			}
@@ -480,14 +485,26 @@ export function initSocketServer(server: HttpServer) {
 						socket.emit("error", { message: "You are not a member of this conversation." });
 						return;
 					}
-					// Faculty may only address their own sections, never the whole college.
-					if (
-						data.roomId === "college" &&
-						identity.role === "faculty" &&
-						!isMultiPortalEmail(identity.email)
-					) {
-						socket.emit("error", { message: "Faculty can only post to their own sections." });
-						return;
+					// The college notice board is read-only for everyone except administrators.
+					if (data.roomId === "college" || data.type === "college") {
+						if (identity.role !== "admin") {
+							socket.emit("error", { message: "Only administrators can post college announcements." });
+							return;
+						}
+					}
+					// Private chats: the room must be this exact pair, and the pair must be allowed to talk
+					// (approved faculty chat, accepted friend request, or an administrator).
+					if (data.type === "private" || data.roomId.startsWith("private:")) {
+						const recipientId = typeof data.recipientId === "string" ? data.recipientId : "";
+						const expectedRoom = `private:${[identity.userId, recipientId].sort().join("-")}`;
+						if (
+							!recipientId ||
+							data.roomId !== expectedRoom ||
+							!(await canDirectMessage({ id: identity.userId, role: identity.role }, recipientId))
+						) {
+							socket.emit("error", { message: "You can only message approved contacts and accepted friends." });
+							return;
+						}
 					}
 					// Class metadata is derived from the (authorized) room key, not the payload.
 					const [, roomDept, roomSem, roomSec] = data.roomId.startsWith("class:")

@@ -4,6 +4,7 @@ import { HTTP_STATUS } from "@/constants/http-status";
 import { prisma } from "@/database";
 import { auth } from "@/providers/auth";
 import { AppError } from "@/utils/app-error";
+import { isTwoFactorPending } from "@/features/authentication/services/two-factor-service";
 
 // Extend Express Request interface
 declare global {
@@ -28,6 +29,10 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
 
 		if (!sessionData?.user) {
 			throw new AppError("Unauthorized: Authentication session required", HTTP_STATUS.UNAUTHORIZED);
+		}
+		// Password accepted, but the emailed 2FA code hasn't been entered yet.
+		if (isTwoFactorPending(sessionData)) {
+			throw new AppError("Two-step verification required. Enter the code sent to your email.", HTTP_STATUS.UNAUTHORIZED);
 		}
 
 		const dbUser = await prisma.user.findUnique({
