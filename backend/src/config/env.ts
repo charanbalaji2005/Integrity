@@ -85,6 +85,16 @@ const envSchema = z.object({
 	JUDGE0_URL: z.string().url().optional(),
 	/** Must equal AUTHN_TOKEN in infra/judge0/judge0.conf. */
 	JUDGE0_AUTH_TOKEN: z.string().optional(),
+	/**
+	 * "judge0" (default): sandboxed Judge0. "local": compile and run with the toolchains
+	 * installed on this machine (gcc/g++, JDK, Python). Local mode has NO sandbox —
+	 * use it only on a trusted single-machine setup.
+	 */
+	CODE_EXECUTOR: z.enum(["judge0", "local"]).default("local"),
+	/** Local executor overrides (auto-detected when unset). */
+	LOCAL_GCC_BIN_DIR: z.string().optional(),
+	LOCAL_JAVA_HOME: z.string().optional(),
+	LOCAL_PYTHON_PATH: z.string().optional(),
 	/** Confidence below this (0–1) sends a coding evaluation to faculty review. */
 	CODE_EVAL_CONFIDENCE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
 

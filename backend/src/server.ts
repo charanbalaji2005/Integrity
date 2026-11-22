@@ -85,6 +85,15 @@ async function initialiseData() {
 	// Vigil coding: poll the Judge0 sandbox for runs and process evaluation jobs.
 	const { startExecutionPoller } = await import("./features/coding/services/execution-service");
 	const { startEvaluationWorker } = await import("./features/coding/services/evaluation-service");
+	if (env.CODE_EXECUTOR === "local") {
+		const { applyLocalLanguageLabels, localToolchain } = await import("./features/coding/services/local-runner");
+		applyLocalLanguageLabels();
+		const t = localToolchain();
+		console.warn(
+			`[Coding] Local executor (NO sandbox): ${Object.values(t.versions).join(", ") || "no toolchains found"}` +
+				(env.NODE_ENV === "production" ? " — not recommended in production." : ""),
+		);
+	}
 	startExecutionPoller();
 	startEvaluationWorker();
 }

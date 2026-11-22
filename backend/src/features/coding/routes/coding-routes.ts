@@ -7,6 +7,10 @@ const router: IRouter = Router();
 router.use(requireAuth);
 
 router.get("/health", c.healthHandler);
+router.get("/languages", c.languagesHandler);
+
+// Compiler playground (student portal): free practice runs, not tied to an exam
+router.post("/playground/run", requireRole("user", "faculty", "admin"), c.playgroundRunHandler);
 
 // Student coding workspace (attempt owner only; writes only while the attempt is in progress)
 router.get("/attempts/:attemptId/questions/:questionId/workspace", requireRole("user"), c.workspaceHandler);

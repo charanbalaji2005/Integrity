@@ -46,6 +46,8 @@ import { ChatbotIcon } from "../components/ChatbotIcon";
 import { NotificationCenter } from "../components/NotificationCenter";
 import { SidebarProvider, SidebarTrigger } from "../components/ui/sidebar";
 import { StudyMaterialsPanel } from "../components/study/StudyMaterialsPanel";
+import { CompilerStudio } from "../components/code/CompilerStudio";
+import { TerminalSquare } from "lucide-react";
 import { PortalSidebar } from "../components/PortalSidebar";
 import { openSettings } from "../settings/SettingsCenter";
 import { PlagiarismAnalysis } from "../components/PlagiarismAnalysis";
@@ -113,7 +115,7 @@ const RADAR_METRICS = [
 
 // Upcoming countdown helper
 /** Tabs that use the whole content area edge to edge (chat-style workspaces). */
-const FULL_BLEED_TABS = new Set(["Messages", "Support"]);
+const FULL_BLEED_TABS = new Set(["Messages", "Support", "Compilers"]);
 
 function useCountdown(initialHours: number, initialMinutes: number, initialSeconds: number) {
   const [time, setTime] = useState({
@@ -275,6 +277,7 @@ export function DashboardView({
     { name: "Overview", icon: LayoutDashboard },
     { name: "Messages", icon: MessageSquare },
     { name: "Study Materials", icon: Library },
+    { name: "Compilers", icon: TerminalSquare },
     { name: "Live Sessions", icon: Video },
     { name: "Integrity Reports", icon: ShieldAlert },
     { name: "AI Insights", icon: Sparkles },
@@ -311,9 +314,9 @@ export function DashboardView({
         user={{ name: user?.name, email: user?.email, image: user?.image, roleLabel: "Student" }}
         onSignOut={handleLogout}
         groups={[
-          { label: "Workspace", items: sidebarLinks.slice(0, 4).map((l) => ({ id: l.name, label: l.name, icon: l.icon })) },
-          { label: "Integrity", items: sidebarLinks.slice(4, 8).map((l) => ({ id: l.name, label: l.name, icon: l.icon })) },
-          { label: "Help", items: sidebarLinks.slice(8).map((l) => ({ id: l.name, label: l.name, icon: l.icon })) },
+          { label: "Workspace", items: sidebarLinks.slice(0, 5).map((l) => ({ id: l.name, label: l.name, icon: l.icon })) },
+          { label: "Integrity", items: sidebarLinks.slice(5, 9).map((l) => ({ id: l.name, label: l.name, icon: l.icon })) },
+          { label: "Help", items: sidebarLinks.slice(9).map((l) => ({ id: l.name, label: l.name, icon: l.icon })) },
         ]}
       />
 
@@ -1112,6 +1115,8 @@ export function DashboardView({
             <StudentMessagingView />
           ) : activeTab === "Study Materials" ? (
             <StudyMaterialsPanel mode="student" />
+          ) : activeTab === "Compilers" ? (
+            <CompilerStudio userId={user.id} />
           ) : activeTab === "Integrity Reports" ? (
             <IntegrityReports user={user} dbAssessments={dbAssessments} />
           ) : activeTab === "AI Insights" ? (

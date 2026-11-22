@@ -37,13 +37,45 @@ const MAX_SCALE = 3;
 const clampScale = (s: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.round(s * 100) / 100));
 
 let pdfjsPromise: Promise<typeof import("pdfjs-dist")> | null = null;
+
+/**
+ * A tab opened before a new deploy (or before Vite re-bundled its deps in dev)
+ * asks for chunk URLs that no longer exist. Reload once to pick up the new
+ * ones; the session flag stops a reload loop if the file is genuinely missing.
+ */
+const STALE_CHUNK_RE = /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i;
+const RELOAD_FLAG = "pdfjs-chunk-reload";
+
 function loadPdfJs() {
   pdfjsPromise ??= (async () => {
     const pdfjs = await import("pdfjs-dist");
     const worker = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
     pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+    try {
+      sessionStorage.removeItem(RELOAD_FLAG);
+    } catch {
+      /* storage unavailable */
+    }
     return pdfjs;
-  })();
+  })().catch((err: unknown) => {
+    pdfjsPromise = null; // don't cache the failure; the next attempt retries
+    const message = err instanceof Error ? err.message : String(err);
+    if (STALE_CHUNK_RE.test(message)) {
+      let alreadyReloaded = false;
+      try {
+        alreadyReloaded = sessionStorage.getItem(RELOAD_FLAG) === "1";
+        if (!alreadyReloaded) sessionStorage.setItem(RELOAD_FLAG, "1");
+      } catch {
+        alreadyReloaded = true; // can't guard against loops without storage
+      }
+      if (!alreadyReloaded) {
+        window.location.reload();
+        return new Promise<never>(() => {}); // page is reloading
+      }
+      throw new Error("The PDF viewer was updated. Please refresh the page (Ctrl+Shift+R) to open this file.");
+    }
+    throw err;
+  });
   return pdfjsPromise;
 }
 

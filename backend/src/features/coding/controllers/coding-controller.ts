@@ -160,3 +160,50 @@ export async function reevaluateFlaggedHandler(req: Request, res: Response) {
 	const body = parse(z.object({ questionId: z.string().max(40).optional() }), req.body ?? {});
 	sendSuccess(res, await reevaluateFlagged(r, p(req.params.assessmentId), body.questionId), "Re-evaluation queued");
 }
+
+/* ───────────────────────── Compiler playground (student portal) ───────────────────────── */
+
+/** GET /api/coding/languages — compilers available in the sandbox, with starter templates. */
+export async function languagesHandler(_req: Request, res: Response) {
+	sendSuccess(
+		res,
+		CODE_LANGUAGES.map((k) => ({
+			key: k,
+			label: LANGUAGE_SPECS[k].label,
+			monaco: LANGUAGE_SPECS[k].monaco,
+			fileName: LANGUAGE_SPECS[k].fileName,
+			template: LANGUAGE_SPECS[k].template,
+		})),
+	);
+}
+
+const playgroundSchema = z.object({
+	language: z.string(),
+	sourceCode: z.string(),
+	stdin: z.string().max(MAX_STDIN_BYTES, "Input is larger than 64 KB.").default(""),
+	mode: z.enum(["compile", "run"]).default("run"),
+});
+
+/**
+ * POST /api/coding/playground/run — free practice runs, not tied to any exam.
+ * Same isolate sandbox, per-user concurrency and per-minute limits as exam runs.
+ */
+export async function playgroundRunHandler(req: Request, res: Response) {
+	const u = getAuthUser(req);
+	const body = parse(playgroundSchema, req.body);
+	if (!isCodeLanguage(body.language)) throw new AppError("Choose C, C++, Java or Python.", HTTP_STATUS.BAD_REQUEST);
+	const exec = await createExecution({
+		userId: u.id,
+		attemptId: null,
+		questionId: null,
+		language: body.language,
+		sourceCode: assertSource(body.sourceCode),
+		stdin: body.stdin,
+		mode: body.mode,
+		timeLimitMs: 5000,
+		memoryLimitMb: Math.max(256, LANGUAGE_SPECS[body.language].minMemoryMb),
+		samples: [],
+		outputMatch: "trim",
+	});
+	sendSuccess(res, exec, "Execution queued", 202);
+}

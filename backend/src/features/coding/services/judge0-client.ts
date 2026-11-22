@@ -1,5 +1,6 @@
 import { env } from "../../../config/env";
 import { LANGUAGE_SPECS, type CodeLanguage } from "../languages";
+import { fetchLocalRuns, localLanguagesAvailable, localToolchain, submitLocalRuns } from "./local-runner";
 
 /**
  * Thin client for a self-hosted Judge0 CE instance. Judge0 runs every program
@@ -49,8 +50,10 @@ export interface RunResult {
 const MAX_OUTPUT = 64 * 1024;
 const FIELDS = "token,status,stdout,stderr,compile_output,message,exit_code,time,memory";
 
+const isLocal = () => env.CODE_EXECUTOR === "local";
+
 export function executorConfigured(): boolean {
-	return Boolean(env.JUDGE0_URL);
+	return isLocal() || Boolean(env.JUDGE0_URL);
 }
 
 function baseUrl(): string {
@@ -109,6 +112,7 @@ function toSubmission(r: RunRequest) {
 /** Submits programs (batch) and returns their tokens in order. */
 export async function submitRuns(runs: RunRequest[]): Promise<string[]> {
 	if (!runs.length) return [];
+	if (isLocal()) return submitLocalRuns(runs);
 	if (runs.length === 1) {
 		const r = await call<{ token?: string }>("/submissions?base64_encoded=true&wait=false", {
 			method: "POST",
@@ -178,6 +182,7 @@ export function normalizeResult(raw: RawResult, language: CodeLanguage, memoryLi
 
 export async function fetchRuns(tokens: string[]): Promise<RawResult[]> {
 	if (!tokens.length) return [];
+	if (isLocal()) return fetchLocalRuns(tokens);
 	const r = await call<{ submissions?: RawResult[] }>(
 		`/submissions/batch?tokens=${tokens.map(encodeURIComponent).join(",")}&base64_encoded=true&fields=${FIELDS}`,
 	);
@@ -217,7 +222,18 @@ export async function executorHealth(force = false): Promise<ExecutorHealth> {
 	if (!force && healthCache && Date.now() - healthCache.at < 30000) return healthCache.value;
 	const none = { c: false, cpp: false, java: false, python: false };
 	let value: ExecutorHealth;
-	if (!executorConfigured()) {
+	if (isLocal()) {
+		const languages = localLanguagesAvailable();
+		const missing = (Object.keys(languages) as CodeLanguage[]).filter((k) => !languages[k]);
+		const t = localToolchain();
+		value = {
+			configured: true,
+			reachable: missing.length < 4,
+			version: `local (${[t.versions.cpp, t.versions.java, t.versions.python].filter(Boolean).join(", ")})`,
+			languages,
+			error: missing.length ? `Not installed on this machine: ${missing.join(", ")}` : null,
+		};
+	} else if (!executorConfigured()) {
 		value = { configured: false, reachable: false, version: null, languages: none, error: "JUDGE0_URL is not set." };
 	} else {
 		try {

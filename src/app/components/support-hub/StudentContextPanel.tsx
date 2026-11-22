@@ -85,14 +85,18 @@ export function StudentContextPanel({
         <p className="flex items-center gap-1 text-[10.5px] text-[#8a8a8a] px-1 mt-0.5">
           <Lock className="size-3" aria-hidden /> Access is logged
         </p>
-        <div className="flex gap-1 overflow-x-auto mt-2 -mx-1 px-1 pb-2" role="tablist" aria-label="Student context sections">
+        <div className="scrollbar-visible flex gap-1 overflow-x-auto mt-2 -mx-1 px-1 pb-1.5" role="tablist" aria-label="Student context sections">
           {TABS.map((t) => (
             <button
               key={t.key}
               type="button"
               role="tab"
               aria-selected={tab === t.key}
-              onClick={() => setTab(t.key)}
+              onClick={(e) => {
+                setTab(t.key);
+                // Bring a partly hidden tab fully into view.
+                e.currentTarget.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+              }}
               className={cx(
                 "whitespace-nowrap min-h-9 px-2.5 rounded-lg text-[11px] font-bold cursor-pointer shrink-0",
                 focusRing,
