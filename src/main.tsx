@@ -83,6 +83,14 @@ if (remoteBackendUrl && typeof window !== "undefined") {
   };
 }
 
+// Static hosts (e.g. Render) can serve the app at "/index.html". The router only
+// knows "/", "/login", "/dashboard"…, so an unknown path kept the sign-in split
+// layout after login and squeezed the dashboard into the form column.
+if (typeof window !== "undefined" && /\/index\.html?$/i.test(window.location.pathname)) {
+  const base = window.location.pathname.replace(/index\.html?$/i, "");
+  window.history.replaceState(window.history.state, "", base + window.location.search + window.location.hash);
+}
+
 createRoot(document.getElementById("root")!).render(
   <ErrorBoundary>
     <App />
