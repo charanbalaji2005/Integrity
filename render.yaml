@@ -58,6 +58,11 @@ services:
         sync: false # set in the Render dashboard; never commit secrets
       - key: SMTP_PASS
         sync: false # set in the Render dashboard; never commit secrets
+      # Google sign-in (OAuth). Same client ID as the frontend's VITE_GOOGLE_CLIENT_ID.
+      - key: GOOGLE_CLIENT_ID
+        sync: false # set in the Render dashboard; never commit secrets
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false # set in the Render dashboard; never commit secrets
 
   # ============================================================================
   # 2. FRONTEND INSTANCE: React / Vite Static Web Service
@@ -89,3 +94,7 @@ services:
         sync: false
       - key: VITE_GROQ_MODEL
         value: openai/gpt-oss-120b
+      # Google One Tap / sign-in button. Vite bakes this in at build time, so
+      # set it in the dashboard, then redeploy (a restart alone is not enough).
+      - key: VITE_GOOGLE_CLIENT_ID
+        sync: false

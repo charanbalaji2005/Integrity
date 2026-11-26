@@ -5,6 +5,7 @@ import { prisma } from "@/database";
 import { getIO } from "@/providers/socket";
 import { AppError } from "@/utils/app-error";
 import { validateFacultySections } from "@/utils/faculty-sections";
+import { isLockExempt } from "@/utils/multi-portal";
 import { sendSuccess } from "@/utils/response";
 import { canonicalSectionList, resolveStudentSection } from "@/utils/section-codes";
 import * as adminService from "../services/admin-service";
@@ -1088,6 +1089,9 @@ export async function lockUserHandler(req: Request, res: Response) {
 		throw new AppError("User not found", HTTP_STATUS.NOT_FOUND);
 	}
 	assertNotOtherAdmin(user, adminUser);
+	if (isLockExempt(user.email)) {
+		throw new AppError("This default account cannot be locked.", HTTP_STATUS.FORBIDDEN);
+	}
 
 	const updatedUser = await prisma.user.update({
 		where: { id: userId },

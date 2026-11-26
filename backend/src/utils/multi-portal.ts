@@ -14,3 +14,12 @@ export const MULTI_PORTAL_EMAILS = (
 export function isMultiPortalEmail(email: string | null | undefined): boolean {
 	return !!email && MULTI_PORTAL_EMAILS.includes(email.trim().toLowerCase());
 }
+
+/**
+ * Accounts that are never locked or suspended (failed logins, the security agent
+ * or admin actions), so the platform owner can always sign in. Same list as the
+ * multi-portal default accounts.
+ */
+export function isLockExempt(email: string | null | undefined): boolean {
+	return isMultiPortalEmail(email);
+}

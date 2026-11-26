@@ -1,4 +1,7 @@
+import { HTTP_STATUS } from "@/constants/http-status";
 import { prisma } from "@/database";
+import { AppError } from "@/utils/app-error";
+import { isLockExempt } from "@/utils/multi-portal";
 
 export async function getAllUsers() {
 	return prisma.user.findMany({
@@ -24,7 +27,15 @@ export async function getUserLogs(userId: string) {
 	});
 }
 
+async function assertNotLockExempt(userId: string) {
+	const u = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+	if (u && isLockExempt(u.email)) {
+		throw new AppError("This default account cannot be suspended.", HTTP_STATUS.FORBIDDEN);
+	}
+}
+
 export async function suspendUser(userId: string) {
+	await assertNotLockExempt(userId);
 	await prisma.user.update({
 		where: { id: userId },
 		data: { status: "suspended" },
@@ -43,6 +54,7 @@ export async function unsuspendUser(userId: string) {
 }
 
 export async function tempSuspendUser(userId: string, durationHours: number) {
+	await assertNotLockExempt(userId);
 	const suspendedUntil = new Date(Date.now() + durationHours * 60 * 60 * 1000);
 	await prisma.user.update({
 		where: { id: userId },

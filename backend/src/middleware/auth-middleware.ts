@@ -5,6 +5,7 @@ import { prisma } from "@/database";
 import { isTwoFactorPending } from "@/features/authentication/services/two-factor-service";
 import { auth } from "@/providers/auth";
 import { AppError } from "@/utils/app-error";
+import { isLockExempt } from "@/utils/multi-portal";
 
 // Extend Express Request interface
 declare global {
@@ -46,13 +47,16 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
 			throw new AppError("Unauthorized: User account not found", HTTP_STATUS.UNAUTHORIZED);
 		}
 
-		if (dbUser.status === "suspended") {
+		const exempt = isLockExempt(dbUser.email);
+
+		if (!exempt && dbUser.status === "suspended") {
 			throw new AppError("Forbidden: Your account is suspended", HTTP_STATUS.FORBIDDEN);
 		}
 
 		if (
-			dbUser.status === "locked" ||
-			(dbUser.lockedUntil && new Date(dbUser.lockedUntil).getTime() > Date.now())
+			!exempt &&
+			(dbUser.status === "locked" ||
+				(dbUser.lockedUntil && new Date(dbUser.lockedUntil).getTime() > Date.now()))
 		) {
 			const lockedTime = dbUser.lockedUntil ? new Date(dbUser.lockedUntil).getTime() : 0;
 			const minsLeft = lockedTime > Date.now() ? Math.ceil((lockedTime - Date.now()) / 60000) : 0;
@@ -63,7 +67,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
 			throw new AppError(msg, HTTP_STATUS.FORBIDDEN);
 		}
 
-		if (dbUser.status === "temporarily_suspended" && dbUser.suspendedUntil) {
+		if (!exempt && dbUser.status === "temporarily_suspended" && dbUser.suspendedUntil) {
 			if (new Date(dbUser.suspendedUntil).getTime() > Date.now()) {
 				throw new AppError(
 					`Account is temporarily suspended until ${new Date(dbUser.suspendedUntil).toLocaleString()}`,

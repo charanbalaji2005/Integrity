@@ -4,6 +4,7 @@ import { sendEmail } from "@/services/mail";
 import { AppError } from "@/utils/app-error";
 import { errorMessage } from "@/utils/error-message";
 import { validateFacultySections } from "@/utils/faculty-sections";
+import { isLockExempt } from "@/utils/multi-portal";
 import { canonicalSectionList, resolveStudentSection } from "@/utils/section-codes";
 import { MULTI_PORTAL_EMAILS } from "../../../utils/multi-portal";
 import type {
@@ -158,7 +159,7 @@ export async function loginWithEmailPassword(
 		where: { email: emailLower },
 	});
 
-	if (existingUser) {
+	if (existingUser && !isLockExempt(existingUser.email)) {
 		const isLocked =
 			existingUser.status === "locked" ||
 			(existingUser.lockedUntil && new Date(existingUser.lockedUntil).getTime() > Date.now());
@@ -275,7 +276,7 @@ export async function loginWithEmailPassword(
 			},
 		};
 	} catch (err) {
-		if (existingUser) {
+		if (existingUser && !isLockExempt(existingUser.email)) {
 			const attempts = existingUser.failedLoginAttempts + 1;
 			const shouldLock = attempts >= 5;
 			const lockUntil = shouldLock ? new Date(Date.now() + 15 * 60000) : null;

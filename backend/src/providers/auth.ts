@@ -3,6 +3,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { bearer, magicLink, openAPI } from "better-auth/plugins";
 import { errorMessage } from "@/utils/error-message";
+import { isLockExempt } from "@/utils/multi-portal";
 import { env } from "../config/env";
 import { prisma } from "../database";
 import { maskEmail } from "../features/authentication/services/two-factor-service";
@@ -194,7 +195,7 @@ export const auth = betterAuth({
 					const dbUser = await prisma.user.findUnique({
 						where: { email },
 					});
-					if (dbUser) {
+					if (dbUser && !isLockExempt(dbUser.email)) {
 						if (dbUser.status === "suspended") {
 							throw new APIError("UNAUTHORIZED", {
 								message: "Your account is suspended.",
@@ -267,7 +268,7 @@ export const auth = betterAuth({
 				const dbUser = await prisma.user.findUnique({
 					where: { id: ctx.context.session.user.id },
 				});
-				if (dbUser) {
+				if (dbUser && !isLockExempt(dbUser.email)) {
 					if (dbUser.status === "suspended") {
 						throw new APIError("UNAUTHORIZED", {
 							message: "Your account is suspended.",

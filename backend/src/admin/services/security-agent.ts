@@ -1,6 +1,7 @@
 import { hashPassword } from "better-auth/crypto";
 import { prisma } from "@/database";
 import { getIO } from "@/providers/socket";
+import { isLockExempt } from "@/utils/multi-portal";
 import { getPlatformState } from "./platform-state";
 
 // Risk Engine event values - Rule 11 & Rule 2/3/4/5/6/7/8/9/10
@@ -113,7 +114,7 @@ export async function processSecurityEvent(
 	// 4. Determine AI Decision Engine Action - Rule 13
 	let actionTaken = "logged";
 
-	if (severity === "critical") {
+	if (severity === "critical" && !isLockExempt(user.email)) {
 		actionTaken = "locked";
 
 		// Temporarily lock account (never suspend automatically)
