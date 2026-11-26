@@ -27,6 +27,7 @@ import { PasswordSecuritySection } from "./PasswordSecuritySection";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
 import { toast } from "sonner";
 import { apiFetch } from "../utils/api-client";
+import { openPreferredCamera } from "../settings/preferences";
 
 interface ProfileCenterProps {
   isOpen: boolean;
@@ -139,20 +140,8 @@ export const ProfileCenter: React.FC<ProfileCenterProps> = ({ isOpen, onClose, h
 
     setCamState("starting");
     try {
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
-          audio: false,
-        });
-      } catch (err) {
-        // Some webcams reject the preferred constraints; fall back to any camera.
-        if (err instanceof DOMException && err.name === "OverconstrainedError") {
-          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        } else {
-          throw err;
-        }
-      }
+      // Laptop webcam first; phone/virtual cameras (Windows Phone Link) are skipped.
+      const stream: MediaStream = await openPreferredCamera(profile?.id);
       streamRef.current = stream;
       stream.getVideoTracks()[0]?.addEventListener("ended", () => {
         setCamState("error");

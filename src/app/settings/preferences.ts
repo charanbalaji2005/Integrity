@@ -196,14 +196,62 @@ export function cameraConstraints(userId: string | null | undefined): MediaTrack
   return camera.deviceId ? { ...size, deviceId: { ideal: camera.deviceId } } : size;
 }
 
-/** Ask for the camera using saved preferences; fall back to any camera. */
+/**
+ * Phone / virtual cameras Windows and browsers expose (Phone Link "Samsung …",
+ * DroidCam, OBS…). Proctoring must use the laptop's own webcam, and these are
+ * often disconnected, which leaves the scan stuck on a black frame.
+ */
+const AVOID_CAMERA_RE =
+  /phone|link to windows|samsung|galaxy|iphone|android|pixel|oneplus|xiaomi|redmi|droidcam|iriun|epoccam|ivcam|camo|continuity|virtual|obs|snap camera|manycam|ndi|xsplit|nvidia broadcast|mmhmm/i;
+const BUILT_IN_CAMERA_RE = /integrated|built-in|built in|internal|facetime|front|hd webcam|hd camera|usb2\.0 hd|webcam|camera \(/i;
+
+export function isPhoneOrVirtualCamera(label: string): boolean {
+  return AVOID_CAMERA_RE.test(label);
+}
+
+/** Best laptop camera among the listed devices (built-in first, phone/virtual last). */
+export function pickLaptopCamera(devices: Pick<MediaDeviceInfo, "deviceId" | "label" | "kind">[]): string | null {
+  const cams = devices.filter((d) => d.kind === "videoinput" && d.deviceId);
+  if (!cams.length) return null;
+  const score = (label: string) => (isPhoneOrVirtualCamera(label) ? -10 : 0) + (BUILT_IN_CAMERA_RE.test(label) ? 5 : 0);
+  const best = [...cams].sort((a, b) => score(b.label) - score(a.label))[0]!;
+  return best.deviceId;
+}
+
+const stopStream = (s: MediaStream) => s.getTracks().forEach((t) => t.stop());
+
+/**
+ * Ask for the camera using saved preferences. Without a saved choice, prefer the
+ * laptop's built-in webcam over phone/virtual cameras (Windows Phone Link often
+ * becomes the default and shows a black frame).
+ */
 export async function openPreferredCamera(userId: string | null | undefined): Promise<MediaStream> {
+  const constraints = cameraConstraints(userId);
+  const savedChoice = Boolean(readPreferences(userId).camera.deviceId);
+  let stream: MediaStream;
   try {
-    return await navigator.mediaDevices.getUserMedia({ video: cameraConstraints(userId), audio: false });
+    stream = await navigator.mediaDevices.getUserMedia({ video: constraints, audio: false });
   } catch (err) {
     const name = (err as DOMException)?.name;
     // Permission errors won't be fixed by relaxing constraints.
     if (name === "NotAllowedError" || name === "SecurityError") throw err;
-    return navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
   }
+  if (savedChoice) return stream;
+
+  // Device labels are only readable once permission is granted (it is now).
+  try {
+    const current = stream.getVideoTracks()[0]?.getSettings().deviceId;
+    const currentLabel = stream.getVideoTracks()[0]?.label ?? "";
+    const best = pickLaptopCamera(await navigator.mediaDevices.enumerateDevices());
+    if (best && best !== current && isPhoneOrVirtualCamera(currentLabel)) {
+      const { deviceId: _ignored, ...size } = constraints;
+      const better = await navigator.mediaDevices.getUserMedia({ video: { ...size, deviceId: { exact: best } }, audio: false });
+      stopStream(stream);
+      return better;
+    }
+  } catch {
+    /* keep the stream we have */
+  }
+  return stream;
 }

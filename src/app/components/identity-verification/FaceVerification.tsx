@@ -3,6 +3,7 @@ import { ScanFace, CheckCircle2 } from 'lucide-react'
 import { Card, IconWrap, Badge } from '../ui/custom-verification'
 import type { ScanStatus } from '../../types/verification-types'
 import { toast } from 'sonner'
+import { openPreferredCamera } from '../../settings/preferences'
 
 interface FaceVerificationProps {
   user?: any
@@ -25,9 +26,8 @@ export function FaceVerification({ user, onVerificationSuccess }: FaceVerificati
   async function handleBegin() {
     setStatus('scanning')
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, facingMode: 'user' }
-      })
+      // Laptop webcam first; phone/virtual cameras (Windows Phone Link) are skipped.
+      const mediaStream = await openPreferredCamera(user?.id)
       setStream(mediaStream)
       
       // Allow DOM to render video element before setting srcObject

@@ -7,6 +7,7 @@ import { parseRegistrationNumber } from "@/utils/registration-number";
 import { sendSuccess } from "@/utils/response";
 import { emitToUser, getIO } from "../../../providers/socket";
 import { finalizeCodingForAttempt } from "../../coding/services/workspace-service";
+import { isDemoEmail } from "../../demo/demo-accounts";
 import {
 	applyBuilderPayload,
 	assessmentScalarData,
@@ -340,6 +341,21 @@ export async function startAttempt(req: Request, res: Response): Promise<void> {
 				HTTP_STATUS.BAD_REQUEST,
 			);
 		}
+	}
+
+	// Shared demo account: an attempt abandoned by a previous visitor must not
+	// block the next one. Retire it (status "reset") once its resume window has
+	// passed; real students keep the strict resume rules below.
+	if (isDemoEmail(student.email)) {
+		await prisma.assessmentAttempt.updateMany({
+			where: {
+				assessmentId: id,
+				studentId: student.id,
+				status: "started",
+				updatedAt: { lt: new Date(Date.now() - assessment.resumeTimeWindow * 60000) },
+			},
+			data: { status: "reset" },
+		});
 	}
 
 	// Find all attempts for this assessment by this student
