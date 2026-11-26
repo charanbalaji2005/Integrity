@@ -1061,6 +1061,9 @@ export function AdminPanelView({ user, handleBack, parseUserAgent }: AdminPanelV
 					</button>
 				</header>
 				<div
+					role="main"
+					id="main-content"
+					tabIndex={-1}
 					key={activeTab}
 					className={
 						activeTab === "messages"

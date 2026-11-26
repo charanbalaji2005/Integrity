@@ -17,6 +17,13 @@
   },
   "selfHealingLogs": [
     {
+      "id": "sh-jkxkxf8",
+      "timestamp": "2026-11-26T07:30:40.064Z",
+      "component": "Self-Healing Orchestrator",
+      "action": "Self-Healing background service successfully initialized.",
+      "status": "MONITOR"
+    },
+    {
       "id": "sh-dcl5e6m",
       "timestamp": "2026-11-26T07:23:23.545Z",
       "component": "Self-Healing Orchestrator",
@@ -705,13 +712,6 @@
     {
       "id": "sh-tl4978o",
       "timestamp": "2026-11-18T00:34:25.702Z",
-      "component": "Self-Healing Orchestrator",
-      "action": "Self-Healing background service successfully initialized.",
-      "status": "MONITOR"
-    },
-    {
-      "id": "sh-fyyy7fj",
-      "timestamp": "2026-11-18T00:18:08.097Z",
       "component": "Self-Healing Orchestrator",
       "action": "Self-Healing background service successfully initialized.",
       "status": "MONITOR"

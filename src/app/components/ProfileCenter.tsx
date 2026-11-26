@@ -369,7 +369,7 @@ export const ProfileCenter: React.FC<ProfileCenterProps> = ({ isOpen, onClose, h
                 <Settings className="size-4 text-zinc-900" />
                 <h2 className="font-extrabold text-sm text-[#1a1917]">Profile Settings</h2>
               </div>
-              <button 
+              <button aria-label="Close" 
                 onClick={onClose}
                 className="p-1.5 hover:bg-zinc-100 rounded-xl transition cursor-pointer border-none outline-none"
               >

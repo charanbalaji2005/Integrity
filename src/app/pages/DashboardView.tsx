@@ -387,6 +387,8 @@ export function DashboardView({
 
         {/* Dashboard Content Container */}
         <main
+          id="main-content"
+          tabIndex={-1}
           key={activeTab}
           className={
             FULL_BLEED_TABS.has(activeTab)

@@ -60,7 +60,7 @@ export function CookieConsent() {
 									<ShieldCheck className="size-4 text-emerald-600" />
 									Cookie Consent Notice
 								</h3>
-								<button
+								<button aria-label="Dismiss"
 									onClick={handleReject}
 									className="text-[#8a8a8a] hover:text-black transition-colors rounded-full p-1 hover:bg-neutral-100"
 									title="Dismiss"

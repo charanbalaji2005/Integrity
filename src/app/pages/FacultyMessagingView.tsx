@@ -1205,7 +1205,7 @@ export function FacultyMessagingView() {
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <button
+                <button aria-label="Attach file"
                   type="button"
                   onClick={triggerMockUpload}
                   className="p-2 text-[#8a8a8a] hover:text-[#1a1917] rounded-xl hover:bg-[#f6f6f6] transition-colors"
@@ -1405,7 +1405,7 @@ export function FacultyMessagingView() {
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <button
+                <button aria-label="Attach file"
                   type="button"
                   onClick={triggerMockUpload}
                   className="p-2 text-[#8a8a8a] hover:text-[#1a1917] rounded-xl hover:bg-[#f6f6f6] transition-colors"

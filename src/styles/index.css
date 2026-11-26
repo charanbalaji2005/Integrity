@@ -422,3 +422,43 @@ body {
   --color-sky-400: oklch(58.8% 0.158 241.966);
   --color-sky-300: oklch(50% 0.134 242.749);
 }
+
+/* ── Accessibility baseline ──
+   1. Every interactive element shows a clear focus ring when reached by keyboard
+      (mouse clicks don't trigger :focus-visible, so the visual design is unchanged).
+   2. Users who ask the OS for reduced motion get no animations or smooth scrolling. */
+:where(a, button, input, select, textarea, summary, [role="button"], [role="tab"], [role="menuitem"], [role="switch"], [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Keyboard "skip to main content" link (index.html): hidden until focused. */
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 10000;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: #111827;
+  color: #ffffff;
+  font: 600 14px/1.2 system-ui, sans-serif;
+  transform: translateY(-200%);
+}
+.skip-link:focus {
+  transform: none;
+}
+#main-content:focus {
+  outline: none;
+}

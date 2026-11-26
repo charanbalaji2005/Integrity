@@ -222,7 +222,7 @@ export const GroqLiveMonitorPanel: React.FC<GroqLiveMonitorPanelProps> = ({
                 placeholder="e.g. Is frequent gaze diversion to top-right suspicious?"
                 className="flex-1 bg-[#f6f6f6]/60 border border-[#dedede] rounded-xl px-3 py-2 text-xs text-zinc-800 placeholder-zinc-400 outline-none focus:border-[#b2b2b2]"
               />
-              <button
+              <button aria-label="Send"
                 type="submit"
                 disabled={isQueryingCopilot || !copilotQuery.trim()}
                 className="bg-[#1a1917] hover:bg-black text-white p-2 rounded-xl transition disabled:opacity-50 cursor-pointer"

@@ -706,6 +706,8 @@ export default function FacultyPortalView({ user, session, handleLogout }: Facul
         </header>
 
         <main
+          id="main-content"
+          tabIndex={-1}
           key={activeTab}
           className={
             activeTab === "Messages" || activeTab === "AI Assistant"

@@ -513,13 +513,13 @@ export function CompilerStudio({ userId }: { userId: string }) {
                 <button type="button" onClick={() => setWrap((w) => !w)} aria-pressed={wrap} title="Word wrap" className={`rounded p-1.5 hover:bg-zinc-800 ${wrap ? "text-zinc-100" : "text-zinc-400"}`}>
                   <WrapText className="size-3.5" />
                 </button>
-                <button type="button" onClick={resetTemplate} title="Reset to starter template" className="rounded p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100">
+                <button aria-label="Reset to starter template" type="button" onClick={resetTemplate} title="Reset to starter template" className="rounded p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100">
                   <RotateCcw className="size-3.5" />
                 </button>
                 <button type="button" onClick={() => void navigator.clipboard?.writeText(active.code).then(() => toast.success("Code copied"))} title="Copy code" className="rounded p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100">
                   <Copy className="size-3.5" />
                 </button>
-                <button type="button" onClick={download} title={`Download ${active.name}`} className="rounded p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100">
+                <button aria-label={`Download ${active.name}`} type="button" onClick={download} title={`Download ${active.name}`} className="rounded p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100">
                   <Download className="size-3.5" />
                 </button>
                 <button type="button" onClick={() => setShowShortcuts((v) => !v)} aria-pressed={showShortcuts} title="Keyboard shortcuts" className="rounded p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100">
