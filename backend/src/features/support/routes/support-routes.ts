@@ -3,13 +3,13 @@ import multer from "multer";
 import { HTTP_STATUS } from "@/constants/http-status";
 import { requireAuth, requireRole } from "@/middleware/auth-middleware";
 import { AppError } from "@/utils/app-error";
+import { isDemoEmail, isDemoTicket } from "../../demo/demo-accounts";
 import {
 	sendSupportRegisterOtp,
 	suggestReply,
 	verifySupportRegisterOtp,
 } from "../controllers/support-controller";
 import * as hub from "../controllers/support-hub-controller";
-import { isDemoEmail, isDemoTicket } from "../../demo/demo-accounts";
 
 const router: IRouter = Router();
 const staffOnly = requireRole("support", "admin");
@@ -51,7 +51,11 @@ router.use(requireAuth);
 // accounts, and never sees cross-student data (analytics, staff directory).
 async function demoTicketGuard(req: Request, _res: Response, next: NextFunction, id: string) {
 	try {
-		if (isDemoEmail(req.user?.email) && req.path.startsWith("/tickets/") && !(await isDemoTicket(id))) {
+		if (
+			isDemoEmail(req.user?.email) &&
+			req.path.startsWith("/tickets/") &&
+			!(await isDemoTicket(id))
+		) {
 			return next(new AppError("Ticket not found.", HTTP_STATUS.NOT_FOUND));
 		}
 		next();
@@ -63,7 +67,12 @@ router.param("id", demoTicketGuard);
 router.param("ticketId", demoTicketGuard);
 router.use(["/analytics", "/staff"], (req, _res, next) => {
 	if (isDemoEmail(req.user?.email)) {
-		return next(new AppError("Not available on the demo account (it would show real student data).", HTTP_STATUS.FORBIDDEN));
+		return next(
+			new AppError(
+				"Not available on the demo account (it would show real student data).",
+				HTTP_STATUS.FORBIDDEN,
+			),
+		);
 	}
 	next();
 });

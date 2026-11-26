@@ -5,10 +5,10 @@ import { env } from "../config/env";
 import { prisma } from "../database";
 import { isTwoFactorPending } from "../features/authentication/services/two-factor-service";
 import { canDirectMessage } from "../features/chat/services/relationships";
+import { isDemoEmail, isDemoTicket } from "../features/demo/demo-accounts";
 import { canSeeStudentSection, parseSections, sectionMonitorRoom } from "../utils/faculty-sections";
 import { isMultiPortalEmail } from "../utils/multi-portal";
 import { auth } from "./auth";
-import { isDemoEmail, isDemoTicket } from "../features/demo/demo-accounts";
 
 /**
  * Identity attached to every socket. It is derived ONLY from a verified

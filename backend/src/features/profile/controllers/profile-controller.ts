@@ -5,9 +5,9 @@ import { prisma } from "../../../database";
 import { AppError } from "../../../utils/app-error";
 import { validateFacultySections } from "../../../utils/faculty-sections";
 import { sendSuccess } from "../../../utils/response";
-import { isDemoEmail } from "../../demo/demo-accounts";
 import { canonicalSectionList, resolveStudentSection } from "../../../utils/section-codes";
 import { assertToggleCode } from "../../authentication/controllers/two-factor-controller";
+import { isDemoEmail } from "../../demo/demo-accounts";
 
 import { verifyFace } from "../../proctoring/services/proctoring-service";
 
@@ -59,7 +59,11 @@ export async function getProfile(req: Request, res: Response): Promise<void> {
 export async function updateProfile(req: Request, res: Response): Promise<void> {
 	const userAuth = getAuthUser(req);
 	const userId = userAuth.id;
-	if (isDemoEmail(userAuth.email) && req.body?.email !== undefined && req.body.email !== userAuth.email) {
+	if (
+		isDemoEmail(userAuth.email) &&
+		req.body?.email !== undefined &&
+		req.body.email !== userAuth.email
+	) {
 		throw new AppError("The shared demo account can't change its email.", HTTP_STATUS.FORBIDDEN);
 	}
 
@@ -355,7 +359,10 @@ export async function toggle2FA(req: Request, res: Response): Promise<void> {
 	const userAuth = getAuthUser(req);
 	const userId = userAuth.id;
 	if (isDemoEmail(userAuth.email)) {
-		throw new AppError("The shared demo account can't change two-step verification.", HTTP_STATUS.FORBIDDEN);
+		throw new AppError(
+			"The shared demo account can't change two-step verification.",
+			HTTP_STATUS.FORBIDDEN,
+		);
 	}
 
 	const enabled = req.body?.enabled === true;

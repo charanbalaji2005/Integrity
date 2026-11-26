@@ -17,6 +17,62 @@
   },
   "selfHealingLogs": [
     {
+      "id": "sh-6ef00qi",
+      "timestamp": "2026-11-26T10:09:47.842Z",
+      "component": "Self-Healing Orchestrator",
+      "action": "Self-Healing background service successfully initialized.",
+      "status": "MONITOR"
+    },
+    {
+      "id": "sh-2eh4bo9",
+      "timestamp": "2026-11-26T10:08:46.899Z",
+      "component": "Self-Healing Orchestrator",
+      "action": "Self-Healing background service successfully initialized.",
+      "status": "MONITOR"
+    },
+    {
+      "id": "sh-usfu0ds",
+      "timestamp": "2026-11-26T10:06:16.853Z",
+      "component": "Self-Healing Orchestrator",
+      "action": "Self-Healing background service successfully initialized.",
+      "status": "MONITOR"
+    },
+    {
+      "id": "sh-w3miqzl",
+      "timestamp": "2026-11-26T08:48:27.954Z",
+      "component": "Self-Healing Orchestrator",
+      "action": "Self-Healing background service successfully initialized.",
+      "status": "MONITOR"
+    },
+    {
+      "id": "sh-562lj8j",
+      "timestamp": "2026-11-26T08:44:23.006Z",
+      "component": "Self-Healing Orchestrator",
+      "action": "Self-Healing background service successfully initialized.",
+      "status": "MONITOR"
+    },
+    {
+      "id": "sh-3c90wih",
+      "timestamp": "2026-11-26T08:42:15.328Z",
+      "component": "Self-Healing Orchestrator",
+      "action": "Self-Healing background service successfully initialized.",
+      "status": "MONITOR"
+    },
+    {
+      "id": "sh-mdneet9",
+      "timestamp": "2026-11-26T08:29:08.218Z",
+      "component": "Self-Healing Orchestrator",
+      "action": "Self-Healing background service successfully initialized.",
+      "status": "MONITOR"
+    },
+    {
+      "id": "sh-nyv9ttr",
+      "timestamp": "2026-11-26T08:27:38.260Z",
+      "component": "Self-Healing Orchestrator",
+      "action": "Self-Healing background service successfully initialized.",
+      "status": "MONITOR"
+    },
+    {
       "id": "sh-0uf2a5n",
       "timestamp": "2026-11-26T08:11:16.492Z",
       "component": "Self-Healing Orchestrator",
@@ -659,62 +715,6 @@
       "component": "Self-Healing Orchestrator",
       "action": "Self-Healing background service successfully initialized.",
       "status": "MONITOR"
-    },
-    {
-      "id": "sh-0o9najs",
-      "timestamp": "2026-11-18T00:56:59.297Z",
-      "component": "Self-Healing Orchestrator",
-      "action": "Self-Healing background service successfully initialized.",
-      "status": "MONITOR"
-    },
-    {
-      "id": "sh-unj8vai",
-      "timestamp": "2026-11-18T00:56:38.903Z",
-      "component": "Self-Healing Orchestrator",
-      "action": "Self-Healing background service successfully initialized.",
-      "status": "MONITOR"
-    },
-    {
-      "id": "sh-ywqasy2",
-      "timestamp": "2026-11-18T00:55:31.067Z",
-      "component": "WebSocket Proctoring Stream",
-      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
-      "status": "HEALED"
-    },
-    {
-      "id": "sh-8jsguf7",
-      "timestamp": "2026-11-18T00:55:01.061Z",
-      "component": "Self-Healing Orchestrator",
-      "action": "Self-Healing background service successfully initialized.",
-      "status": "MONITOR"
-    },
-    {
-      "id": "sh-6o5oers",
-      "timestamp": "2026-11-18T00:54:52.590Z",
-      "component": "Self-Healing Orchestrator",
-      "action": "Self-Healing background service successfully initialized.",
-      "status": "MONITOR"
-    },
-    {
-      "id": "sh-agod2i4",
-      "timestamp": "2026-11-18T00:54:41.829Z",
-      "component": "Self-Healing Orchestrator",
-      "action": "Self-Healing background service successfully initialized.",
-      "status": "MONITOR"
-    },
-    {
-      "id": "sh-fxdr4yy",
-      "timestamp": "2026-11-18T00:53:23.188Z",
-      "component": "Self-Healing Orchestrator",
-      "action": "Self-Healing background service successfully initialized.",
-      "status": "MONITOR"
-    },
-    {
-      "id": "sh-swfs11t",
-      "timestamp": "2026-11-18T00:52:26.117Z",
-      "component": "WebSocket Proctoring Stream",
-      "action": "Detected 3 orphan streams. Auto-cleaned socket connection leaks.",
-      "status": "HEALED"
     }
   ]
 }

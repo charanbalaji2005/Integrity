@@ -133,7 +133,10 @@ export async function verifyLoginCodeHandler(req: Request, res: Response) {
 export async function requestToggleCodeHandler(req: Request, res: Response) {
 	const auth = getAuthUser(req);
 	if (isDemoEmail(auth.email)) {
-		throw new AppError("The shared demo account can't change two-step verification.", HTTP_STATUS.FORBIDDEN);
+		throw new AppError(
+			"The shared demo account can't change two-step verification.",
+			HTTP_STATUS.FORBIDDEN,
+		);
 	}
 	const enabled = req.body?.enabled === true;
 	const user = await prisma.user.findUnique({
