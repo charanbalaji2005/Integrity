@@ -9,6 +9,7 @@ import {
 	verifySupportRegisterOtp,
 } from "../controllers/support-controller";
 import * as hub from "../controllers/support-hub-controller";
+import { isDemoEmail, isDemoTicket } from "../../demo/demo-accounts";
 
 const router: IRouter = Router();
 const staffOnly = requireRole("support", "admin");
@@ -45,6 +46,27 @@ router.get("/attachments/:id/download", hub.downloadAttachmentHandler);
 
 // ── Everything below requires a session ──────────────────────────────────
 router.use(requireAuth);
+
+// The public demo support account may only work on tickets raised by demo
+// accounts, and never sees cross-student data (analytics, staff directory).
+async function demoTicketGuard(req: Request, _res: Response, next: NextFunction, id: string) {
+	try {
+		if (isDemoEmail(req.user?.email) && req.path.startsWith("/tickets/") && !(await isDemoTicket(id))) {
+			return next(new AppError("Ticket not found.", HTTP_STATUS.NOT_FOUND));
+		}
+		next();
+	} catch (err) {
+		next(err);
+	}
+}
+router.param("id", demoTicketGuard);
+router.param("ticketId", demoTicketGuard);
+router.use(["/analytics", "/staff"], (req, _res, next) => {
+	if (isDemoEmail(req.user?.email)) {
+		return next(new AppError("Not available on the demo account (it would show real student data).", HTTP_STATUS.FORBIDDEN));
+	}
+	next();
+});
 
 // Knowledge base (students: public articles; staff: + internal)
 router.get("/kb", hub.kbListHandler);

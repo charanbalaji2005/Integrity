@@ -5,6 +5,7 @@ import { AppError } from "@/utils/app-error";
 import { errorMessage } from "@/utils/error-message";
 import { validateFacultySections } from "@/utils/faculty-sections";
 import { isLockExempt } from "@/utils/multi-portal";
+import { DEMO_ACCOUNTS, type DemoPortal, demoPortalOf, isDemoEmail } from "../../demo/demo-accounts";
 import { canonicalSectionList, resolveStudentSection } from "@/utils/section-codes";
 import { MULTI_PORTAL_EMAILS } from "../../../utils/multi-portal";
 import type {
@@ -153,6 +154,17 @@ export async function loginWithEmailPassword(
 	userAgent?: string,
 ): Promise<LoginResult> {
 	const emailLower = payload.email.toLowerCase().trim();
+
+	// Public demo accounts: never the admin portal; each belongs to one portal.
+	if (isDemoEmail(emailLower)) {
+		const own = demoPortalOf(emailLower);
+		if (payload.portal === "admin") {
+			throw new AppError("Demo accounts can't access the admin portal.", 403);
+		}
+		if (payload.portal && own && payload.portal !== own) {
+			throw new AppError(`This demo account is for the ${own} portal. Use ${DEMO_ACCOUNTS[payload.portal as DemoPortal]?.email ?? "the matching demo account"} here.`, 403);
+		}
+	}
 
 	// Check if user is locked out
 	const existingUser = await prisma.user.findUnique({

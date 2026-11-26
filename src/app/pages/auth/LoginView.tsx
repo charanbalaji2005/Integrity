@@ -44,6 +44,7 @@ export function LoginView({ isAdminPortal = false, setIsAdminPortal, setIsFacult
       emailLabel="Email address"
       emailPlaceholder="charanbalajineelampalli752005@gmail.com"
       domainError={() => null}
+      demoPortal="student"
       submitLabel="Sign in"
       onForgotPassword={() => setView("forgot-email")}
       belowSso={

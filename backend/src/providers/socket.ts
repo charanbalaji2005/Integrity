@@ -8,6 +8,7 @@ import { canDirectMessage } from "../features/chat/services/relationships";
 import { canSeeStudentSection, parseSections, sectionMonitorRoom } from "../utils/faculty-sections";
 import { isMultiPortalEmail } from "../utils/multi-portal";
 import { auth } from "./auth";
+import { isDemoEmail, isDemoTicket } from "../features/demo/demo-accounts";
 
 /**
  * Identity attached to every socket. It is derived ONLY from a verified
@@ -183,8 +184,13 @@ async function canJoinRoom(identity: SocketIdentity, roomId: string): Promise<bo
 	if (roomId === "college") return true;
 
 	// Support Hub: staff room, and per-ticket rooms for the owning student or staff.
-	if (roomId === "support-staff") return role === "support" || role === "admin";
+	// The public demo support account never joins the all-tickets staff feed,
+	// and only demo tickets' rooms.
+	if (roomId === "support-staff")
+		return (role === "support" || role === "admin") && !isDemoEmail(identity.email);
 	if (roomId.startsWith("support-ticket-")) {
+		if (isDemoEmail(identity.email) && role !== "user")
+			return isDemoTicket(roomId.slice("support-ticket-".length));
 		if (role === "support" || role === "admin") return true;
 		const ticket = await prisma.supportTicket.findUnique({
 			where: { id: roomId.slice("support-ticket-".length) },

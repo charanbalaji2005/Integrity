@@ -2,6 +2,7 @@ import { HTTP_STATUS } from "../../../constants/http-status";
 import { prisma } from "../../../database";
 import { getIO } from "../../../providers/socket";
 import { AppError } from "../../../utils/app-error";
+import { demoUserIds, isDemoEmail } from "../../demo/demo-accounts";
 import {
 	categoryLabel,
 	OPEN_STATUSES,
@@ -1161,6 +1162,9 @@ export async function getQueue(
 	const view = (Object.keys(views).includes(q.view ?? "") ? q.view : "all") as QueueView;
 	const where: Record<string, unknown> = { AND: [views[view]] };
 	const and = where.AND as object[];
+	// Demo support only sees tickets raised by demo accounts.
+	const demoScope = isDemoEmail(user.email) ? { studentId: { in: await demoUserIds() } } : null;
+	if (demoScope) and.push(demoScope);
 	if (q.priority && PRIORITY_RANK[q.priority] !== undefined) and.push({ priority: q.priority });
 	if (q.category) and.push({ category: q.category });
 	if (q.q?.trim()) {
@@ -1195,7 +1199,8 @@ export async function getQueue(
 		);
 	});
 
-	const countFor = (w: object) => prisma.supportTicket.count({ where: w });
+	const countFor = (w: object) =>
+		prisma.supportTicket.count({ where: demoScope ? { AND: [w, demoScope] } : w });
 	const keys = Object.keys(views) as QueueView[];
 	const counts = Object.fromEntries(
 		await Promise.all(keys.map(async (k) => [k, await countFor(views[k])] as const)),

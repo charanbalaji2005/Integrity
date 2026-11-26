@@ -1,5 +1,6 @@
 import { type IRouter, Router } from "express";
 import { rateLimiter, requireAuth } from "@/middleware/auth-middleware";
+import { DEMO_ACCOUNTS, DEMO_PASSWORD, demoEnabled } from "../../demo/demo-accounts";
 import {
 	forgotPassword,
 	googleOAuth,
@@ -42,6 +43,19 @@ router.post("/verify-register-otp", authRateLimiter, verifyRegisterOtpHandler);
 
 // POST /api/authentication/login
 router.post("/login", authRateLimiter, login);
+
+// Public demo credentials for the login page (student / faculty / support; never admin).
+router.get("/demo-accounts", (_req, res) => {
+	if (!demoEnabled()) return res.json({ success: true, data: { enabled: false } });
+	res.json({
+		success: true,
+		data: {
+			enabled: true,
+			password: DEMO_PASSWORD,
+			accounts: { student: DEMO_ACCOUNTS.student.email, faculty: DEMO_ACCOUNTS.faculty.email, support: DEMO_ACCOUNTS.support.email },
+		},
+	});
+});
 
 // Two-step verification (session issued by /login or Google stays unusable until verified)
 router.post("/2fa/status", twoFactorRateLimiter, loginStatusHandler);

@@ -16,6 +16,7 @@ import {
   PasswordField,
   stagger,
 } from "./AuthPrimitives";
+import { DemoCredentials, type DemoPortal } from "./DemoCredentials";
 
 export interface PortalLink {
   label: string;
@@ -55,6 +56,8 @@ interface PortalLoginFormProps {
   /** Informational note rendered as a soft panel. */
   notice?: React.ReactNode;
   portalLinks: PortalLink[];
+  /** Shows the public demo credentials for this portal (never set on the admin portal). */
+  demoPortal?: DemoPortal;
 }
 
 export function PortalLoginForm(props: PortalLoginFormProps) {
@@ -84,6 +87,7 @@ export function PortalLoginForm(props: PortalLoginFormProps) {
     belowSso,
     notice,
     portalLinks,
+    demoPortal,
   } = props;
 
   const [touched, setTouched] = useState({ email: false });
@@ -137,6 +141,19 @@ export function PortalLoginForm(props: PortalLoginFormProps) {
           description={description}
         />
       </motion.div>
+
+      {demoPortal && (
+        <motion.div variants={stagger.item}>
+          <DemoCredentials
+            portal={demoPortal}
+            onUse={(demoEmail, demoPassword) => {
+              setEmail(demoEmail);
+              setPassword(demoPassword);
+              passwordRef.current?.focus();
+            }}
+          />
+        </motion.div>
+      )}
 
       <form noValidate onSubmit={onSubmit} className="flex flex-col gap-5" aria-label={title}>
         <motion.div variants={stagger.item}>

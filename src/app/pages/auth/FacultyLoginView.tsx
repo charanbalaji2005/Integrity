@@ -46,6 +46,7 @@ export function FacultyLoginView({
       emailLabel="Instructor email"
       emailPlaceholder="charanbalajineelampalli752005@gmail.com"
       domainError={() => null}
+      demoPortal="faculty"
       submitLabel="Sign in to Faculty Portal"
       onForgotPassword={() => setView("forgot-email")}
       notice={

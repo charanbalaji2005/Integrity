@@ -4,6 +4,7 @@ import { prisma } from "@/database";
 import { getAuthUser } from "@/middleware/auth-middleware";
 import { AppError } from "@/utils/app-error";
 import { sendSuccess } from "@/utils/response";
+import { isDemoEmail } from "../../demo/demo-accounts";
 import {
 	attemptsLeftMessage,
 	attemptsRemaining,
@@ -131,6 +132,9 @@ export async function verifyLoginCodeHandler(req: Request, res: Response) {
 /** POST /api/profile/2fa/request { enabled } — email a code to confirm the change. */
 export async function requestToggleCodeHandler(req: Request, res: Response) {
 	const auth = getAuthUser(req);
+	if (isDemoEmail(auth.email)) {
+		throw new AppError("The shared demo account can't change two-step verification.", HTTP_STATUS.FORBIDDEN);
+	}
 	const enabled = req.body?.enabled === true;
 	const user = await prisma.user.findUnique({
 		where: { id: auth.id },

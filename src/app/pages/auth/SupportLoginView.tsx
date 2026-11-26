@@ -31,6 +31,7 @@ export function SupportLoginView({ onNavigate, setView, ...rest }: SupportLoginV
       emailLabel="Support agent email"
       emailPlaceholder="charanbalajineelampalli752005@gmail.com"
       domainError={() => null}
+      demoPortal="support"
       submitLabel="Sign in to Support Console"
       belowSso={
         <>

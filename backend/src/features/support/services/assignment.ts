@@ -2,6 +2,7 @@ import { prisma } from "../../../database";
 import { type Availability, DEFAULT_WEIGHTS, type Weights } from "../support-constants";
 import { audit, emitTicketEvent, emitToStaff, emitToTicket, notifyUser } from "./infra";
 import { toSummary } from "./serializers";
+import { isDemoEmail } from "../../demo/demo-accounts";
 
 /**
  * Workload-aware assignment engine.
@@ -224,6 +225,8 @@ export function rankCandidates(
 ): Candidate[] {
 	const eligible = profiles.filter(
 		(p) =>
+			// The public demo support account never receives real tickets.
+			!isDemoEmail(p.email) &&
 			!exclude.has(p.id) &&
 			p.assignmentsEnabled &&
 			p.availability === "available" &&

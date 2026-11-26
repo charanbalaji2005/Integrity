@@ -1,3 +1,5 @@
+import { isDemoEmail } from "../features/demo/demo-accounts";
+
 /**
  * Default accounts that may sign in to every portal (admin, faculty, support,
  * student) with one set of credentials. Their role follows the portal they
@@ -21,5 +23,7 @@ export function isMultiPortalEmail(email: string | null | undefined): boolean {
  * multi-portal default accounts.
  */
 export function isLockExempt(email: string | null | undefined): boolean {
-	return isMultiPortalEmail(email);
+	// Public demo accounts too: their password is published, so lockouts would only
+	// let one visitor block everyone else.
+	return isMultiPortalEmail(email) || isDemoEmail(email);
 }

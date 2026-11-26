@@ -84,6 +84,10 @@ async function initialiseData() {
 	);
 	startAssignmentScheduler();
 
+	// Public demo accounts for the login page (student / faculty / support; never admin).
+	const { ensureDemoAccounts } = await import("./features/demo/demo-accounts");
+	await ensureDemoAccounts().catch((err) => console.error("[Demo] Could not prepare demo accounts:", err));
+
 	// Vigil coding: poll the Judge0 sandbox for runs and process evaluation jobs.
 	const { startExecutionPoller } = await import("./features/coding/services/execution-service");
 	const { startEvaluationWorker } = await import("./features/coding/services/evaluation-service");
