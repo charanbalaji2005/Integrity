@@ -15,6 +15,7 @@ import { useApplyAppearance } from "./settings/useAppearance";
 import { AuthBrandPanel } from "./components/AuthBrandPanel";
 import { IntegrityGlobe, globeColor } from "./components/webgl/IntegrityGlobe";
 import { AuthSuccessOverlay } from "./components/AuthSuccessOverlay";
+import { TwoFactorChallenge } from "./components/auth/TwoFactorChallenge";
 
 // Pages/Views
 import { LoginView } from "./pages/auth/LoginView";
@@ -301,6 +302,17 @@ export default function App() {
   // Auth success animation
   const [showAuthSuccess, setShowAuthSuccess] = useState(false);
   const [pendingAuthData, setPendingAuthData] = useState<{ user: any; session: any } | null>(null);
+  // Second sign-in step for accounts with two-step verification on.
+  const [twoFactor, setTwoFactor] = useState<{ maskedEmail?: string; codeSent: boolean } | null>(null);
+  useEffect(() => {
+    // Other login screens (e.g. the admin console) hand the second step to this overlay.
+    const onRequired = (e: Event) => {
+      const d = (e as CustomEvent<{ maskedEmail?: string; codeSent?: boolean }>).detail ?? {};
+      setTwoFactor({ maskedEmail: d.maskedEmail, codeSent: !!d.codeSent });
+    };
+    window.addEventListener("two-factor-required", onRequired);
+    return () => window.removeEventListener("two-factor-required", onRequired);
+  }, []);
 
   // Login card shake on error
   const [loginShake, setLoginShake] = useState(false);
@@ -550,7 +562,12 @@ export default function App() {
       });
       if (res.ok) {
         const data = await res.json();
-        if (data && data.user) {
+        if (data?.twoFactorRequired) {
+          // Password/Google accepted; the emailed code hasn't been entered yet.
+          setUser(null);
+          setSession(null);
+          setTwoFactor((prev) => prev ?? { maskedEmail: data.maskedEmail, codeSent: false });
+        } else if (data && data.user) {
           const updatedUser = { ...data.user };
           const actualRole = updatedUser.role || "user";
           const storedActiveRole = localStorage.getItem("activeRole");
@@ -911,6 +928,12 @@ export default function App() {
       }
       localStorage.setItem("activeRole", activeRole);
 
+      if (data.data.twoFactor?.required) {
+        // Code already emailed by the server; finish sign-in in the overlay.
+        setTwoFactor({ maskedEmail: data.data.twoFactor.maskedEmail, codeSent: true });
+        return;
+      }
+
       setPendingAuthData({ user: updatedUser, session: data.data.session });
       setShowAuthSuccess(true);
     } catch (err: any) {
@@ -1009,17 +1032,16 @@ export default function App() {
 
       if (data && data.user) {
         const actualRole = data.user.role || "user";
-        const updatedUser = { ...data.user };
         const activeRole = actualRole === "user" ? "student" : actualRole;
         localStorage.setItem("activeRole", activeRole);
 
-        if (data.session?.token) {
-          localStorage.setItem("auth_token", data.session.token);
+        const oneTapToken = data.token ?? data.session?.token;
+        if (oneTapToken) {
+          localStorage.setItem("auth_token", oneTapToken);
         }
-
-        setUser(updatedUser);
-        setSession(data.session);
-        toast.success("Successfully logged in with Google!");
+        // Resolve through get-session so accounts with 2FA get the code screen.
+        await checkSession();
+        toast.success("Signed in with Google");
       } else {
         if (data.url) {
           window.location.href = data.url;
@@ -1297,6 +1319,21 @@ export default function App() {
     >
       {/* Auth success overlay — renders above everything */}
       <AuthSuccessOverlay visible={showAuthSuccess} onComplete={handleAuthAnimationComplete} />
+      {twoFactor && (
+        <TwoFactorChallenge
+          maskedEmail={twoFactor.maskedEmail}
+          codeAlreadySent={twoFactor.codeSent}
+          onVerified={async () => {
+            setTwoFactor(null);
+            await checkSession();
+            toast.success("Signed in");
+          }}
+          onCancel={() => {
+            setTwoFactor(null);
+            void handleLogout();
+          }}
+        />
+      )}
       {!user && <GoogleOneTap onSignInSuccess={handleGoogleOneTapSignIn} />}
       {/* Ambient background: soft light blobs + dot texture */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">

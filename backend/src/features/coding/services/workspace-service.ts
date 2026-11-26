@@ -15,48 +15,80 @@ export const sha256 = (s: string) => createHash("sha256").update(s, "utf8").dige
  * otherwise, so IDs can't be probed), question belongs to it and is a coding
  * question, and — for writes — the attempt is still in progress.
  */
-export async function loadStudentContext(userId: string, attemptId: string, questionId: string, opts: { write: boolean }) {
+export async function loadStudentContext(
+	userId: string,
+	attemptId: string,
+	questionId: string,
+	opts: { write: boolean },
+) {
 	const attempt = await prisma.assessmentAttempt.findUnique({
 		where: { id: attemptId },
 		select: { id: true, studentId: true, status: true, proctoringStatus: true, assessmentId: true },
 	});
-	if (!attempt || attempt.studentId !== userId) throw new AppError("Attempt not found", HTTP_STATUS.NOT_FOUND);
+	if (!attempt || attempt.studentId !== userId)
+		throw new AppError("Attempt not found", HTTP_STATUS.NOT_FOUND);
 	const question = await prisma.question.findUnique({ where: { id: questionId } });
 	if (!question || question.assessmentId !== attempt.assessmentId || question.type !== "coding") {
 		throw new AppError("Coding question not found", HTTP_STATUS.NOT_FOUND);
 	}
-	if (opts.write && (attempt.status !== "started" || ["TERMINATED", "SUBMITTED"].includes(attempt.proctoringStatus))) {
-		throw new AppError("This attempt is no longer in progress; code can't be changed.", HTTP_STATUS.CONFLICT);
+	if (
+		opts.write &&
+		(attempt.status !== "started" || ["TERMINATED", "SUBMITTED"].includes(attempt.proctoringStatus))
+	) {
+		throw new AppError(
+			"This attempt is no longer in progress; code can't be changed.",
+			HTTP_STATUS.CONFLICT,
+		);
 	}
 	return { attempt, question, config: parseCodingConfig(question.config) };
 }
 
 export function assertSource(sourceCode: unknown): string {
-	if (typeof sourceCode !== "string") throw new AppError("sourceCode is required", HTTP_STATUS.BAD_REQUEST);
-	if (Buffer.byteLength(sourceCode, "utf8") > MAX_SOURCE_BYTES) throw new AppError("Source code is larger than 64 KB.", HTTP_STATUS.BAD_REQUEST);
+	if (typeof sourceCode !== "string")
+		throw new AppError("sourceCode is required", HTTP_STATUS.BAD_REQUEST);
+	if (Buffer.byteLength(sourceCode, "utf8") > MAX_SOURCE_BYTES)
+		throw new AppError("Source code is larger than 64 KB.", HTTP_STATUS.BAD_REQUEST);
 	return sourceCode;
 }
 
 export function assertLanguage(language: unknown, allowed: CodeLanguage[]): CodeLanguage {
 	if (!isCodeLanguage(language) || !allowed.includes(language)) {
-		throw new AppError(`Language not allowed for this question. Use one of: ${allowed.join(", ")}.`, HTTP_STATUS.BAD_REQUEST);
+		throw new AppError(
+			`Language not allowed for this question. Use one of: ${allowed.join(", ")}.`,
+			HTTP_STATUS.BAD_REQUEST,
+		);
 	}
 	return language;
 }
 
 /** Everything the student editor needs. Hidden tests, rubric and reference solution are never included. */
 export async function getWorkspace(userId: string, attemptId: string, questionId: string) {
-	const { attempt, question, config } = await loadStudentContext(userId, attemptId, questionId, { write: false });
+	const { attempt, question, config } = await loadStudentContext(userId, attemptId, questionId, {
+		write: false,
+	});
 	const [drafts, executions, submissions] = await Promise.all([
 		prisma.codeDraft.findMany({ where: { attemptId, questionId }, orderBy: { updatedAt: "desc" } }),
-		prisma.codeExecution.findMany({ where: { attemptId, questionId, userId }, orderBy: { createdAt: "desc" }, take: 10 }),
+		prisma.codeExecution.findMany({
+			where: { attemptId, questionId, userId },
+			orderBy: { createdAt: "desc" },
+			take: 10,
+		}),
 		prisma.codeSubmission.findMany({
 			where: { attemptId, questionId },
 			orderBy: { version: "desc" },
-			select: { id: true, version: true, language: true, submittedAt: true, source: true, isLatest: true, sourceHash: true },
+			select: {
+				id: true,
+				version: true,
+				language: true,
+				submittedAt: true,
+				source: true,
+				isLatest: true,
+				sourceHash: true,
+			},
 		}),
 	]);
-	const activeLanguage = (drafts[0]?.language as CodeLanguage | undefined) ?? config.allowedLanguages[0]!;
+	const activeLanguage =
+		(drafts[0]?.language as CodeLanguage | undefined) ?? config.allowedLanguages[0]!;
 	return {
 		attemptId,
 		questionId,
@@ -73,15 +105,27 @@ export async function getWorkspace(userId: string, attemptId: string, questionId
 		limits: { timeLimitMs: config.timeLimitMs, memoryLimitMb: config.memoryLimitMb },
 		sampleInput: config.sampleInput ?? "",
 		sampleOutput: config.sampleOutput ?? "",
-		publicTests: config.testCases.filter((t) => !t.hidden).map((t, index) => ({ index, input: t.input, output: t.output })),
+		publicTests: config.testCases
+			.filter((t) => !t.hidden)
+			.map((t, index) => ({ index, input: t.input, output: t.output })),
 		hiddenTestCount: config.testCases.filter((t) => t.hidden).length,
-		drafts: drafts.map((d) => ({ language: d.language, sourceCode: d.sourceCode, updatedAt: d.updatedAt, saveCount: d.saveCount })),
+		drafts: drafts.map((d) => ({
+			language: d.language,
+			sourceCode: d.sourceCode,
+			updatedAt: d.updatedAt,
+			saveCount: d.saveCount,
+		})),
 		executions: executions.map(executionDto),
 		submissions: submissions.map(({ sourceHash, ...s }) => s),
 	};
 }
 
-export async function saveDraft(userId: string, attemptId: string, questionId: string, body: { language?: unknown; sourceCode?: unknown }) {
+export async function saveDraft(
+	userId: string,
+	attemptId: string,
+	questionId: string,
+	body: { language?: unknown; sourceCode?: unknown },
+) {
 	const { config } = await loadStudentContext(userId, attemptId, questionId, { write: true });
 	const language = assertLanguage(body.language, config.allowedLanguages);
 	const sourceCode = assertSource(body.sourceCode);
@@ -106,12 +150,21 @@ export async function createSubmissionVersion(args: {
 }) {
 	const hash = sha256(`${args.language}\n${args.sourceCode}`);
 	return prisma.$transaction(async (tx) => {
-		const latest = await tx.codeSubmission.findFirst({ where: { attemptId: args.attemptId, questionId: args.questionId }, orderBy: { version: "desc" } });
+		const latest = await tx.codeSubmission.findFirst({
+			where: { attemptId: args.attemptId, questionId: args.questionId },
+			orderBy: { version: "desc" },
+		});
 		if (latest && latest.sourceHash === hash) return { submission: latest, created: false };
 		if (latest && latest.version >= MAX_VERSIONS && args.source === "student") {
-			throw new AppError(`You can submit at most ${MAX_VERSIONS} versions of one answer.`, HTTP_STATUS.CONFLICT);
+			throw new AppError(
+				`You can submit at most ${MAX_VERSIONS} versions of one answer.`,
+				HTTP_STATUS.CONFLICT,
+			);
 		}
-		await tx.codeSubmission.updateMany({ where: { attemptId: args.attemptId, questionId: args.questionId, isLatest: true }, data: { isLatest: false } });
+		await tx.codeSubmission.updateMany({
+			where: { attemptId: args.attemptId, questionId: args.questionId, isLatest: true },
+			data: { isLatest: false },
+		});
 		const submission = await tx.codeSubmission.create({
 			data: {
 				attemptId: args.attemptId,
@@ -130,11 +183,19 @@ export async function createSubmissionVersion(args: {
 	});
 }
 
-export async function submitFromStudent(userId: string, attemptId: string, questionId: string, body: { language?: unknown; sourceCode?: unknown }) {
-	const { attempt, question, config } = await loadStudentContext(userId, attemptId, questionId, { write: true });
+export async function submitFromStudent(
+	userId: string,
+	attemptId: string,
+	questionId: string,
+	body: { language?: unknown; sourceCode?: unknown },
+) {
+	const { attempt, question, config } = await loadStudentContext(userId, attemptId, questionId, {
+		write: true,
+	});
 	const language = assertLanguage(body.language, config.allowedLanguages);
 	const sourceCode = assertSource(body.sourceCode);
-	if (!sourceCode.trim()) throw new AppError("Write some code before submitting.", HTTP_STATUS.BAD_REQUEST);
+	if (!sourceCode.trim())
+		throw new AppError("Write some code before submitting.", HTTP_STATUS.BAD_REQUEST);
 	// Keep the draft in step so a later refresh restores what was submitted.
 	await prisma.codeDraft.upsert({
 		where: { attemptId_questionId_language: { attemptId, questionId, language } },
@@ -151,7 +212,13 @@ export async function submitFromStudent(userId: string, attemptId: string, quest
 		maxMarks: question.points,
 		source: "student",
 	});
-	return { id: submission.id, version: submission.version, language: submission.language, submittedAt: submission.submittedAt, created };
+	return {
+		id: submission.id,
+		version: submission.version,
+		language: submission.language,
+		submittedAt: submission.submittedAt,
+		created,
+	};
 }
 
 /**
@@ -160,10 +227,18 @@ export async function submitFromStudent(userId: string, attemptId: string, quest
  * version; the Answer row gets the source; an evaluation job is queued.
  * `fallbackResponses` covers answers typed before the editor existed.
  */
-export async function finalizeCodingForAttempt(attemptId: string, fallbackResponses: Record<string, string> = {}) {
+export async function finalizeCodingForAttempt(
+	attemptId: string,
+	fallbackResponses: Record<string, string> = {},
+) {
 	const attempt = await prisma.assessmentAttempt.findUnique({
 		where: { id: attemptId },
-		select: { id: true, studentId: true, assessmentId: true, assessment: { select: { questions: { where: { type: "coding" } } } } },
+		select: {
+			id: true,
+			studentId: true,
+			assessmentId: true,
+			assessment: { select: { questions: { where: { type: "coding" } } } },
+		},
 	});
 	if (!attempt) return [];
 	const queued: string[] = [];
@@ -171,12 +246,22 @@ export async function finalizeCodingForAttempt(attemptId: string, fallbackRespon
 	for (const question of attempt.assessment.questions) {
 		const config = parseCodingConfig(question.config);
 		const [latestSub, latestDraft] = await Promise.all([
-			prisma.codeSubmission.findFirst({ where: { attemptId, questionId: question.id }, orderBy: { version: "desc" } }),
-			prisma.codeDraft.findFirst({ where: { attemptId, questionId: question.id }, orderBy: { updatedAt: "desc" } }),
+			prisma.codeSubmission.findFirst({
+				where: { attemptId, questionId: question.id },
+				orderBy: { version: "desc" },
+			}),
+			prisma.codeDraft.findFirst({
+				where: { attemptId, questionId: question.id },
+				orderBy: { updatedAt: "desc" },
+			}),
 		]);
 
 		let chosen = latestSub;
-		if (latestDraft && latestDraft.sourceCode.trim() && (!latestSub || latestDraft.updatedAt > latestSub.submittedAt) && isCodeLanguage(latestDraft.language)) {
+		if (
+			latestDraft?.sourceCode.trim() &&
+			(!latestSub || latestDraft.updatedAt > latestSub.submittedAt) &&
+			isCodeLanguage(latestDraft.language)
+		) {
 			chosen = (
 				await createSubmissionVersion({
 					attemptId,
@@ -209,10 +294,27 @@ export async function finalizeCodingForAttempt(attemptId: string, fallbackRespon
 		}
 		if (!chosen) continue; // nothing written: the answer stays unanswered (0 marks)
 
-		const answer = await prisma.answer.findFirst({ where: { attemptId, questionId: question.id }, select: { id: true } });
-		if (answer) await prisma.answer.update({ where: { id: answer.id }, data: { response: chosen.sourceCode } });
-		else await prisma.answer.create({ data: { attemptId, questionId: question.id, response: chosen.sourceCode, originalResponse: chosen.sourceCode } });
-		const existingJob = await prisma.codeEvaluationJob.findFirst({ where: { submissionId: chosen.id, status: { in: ["pending", "processing"] } } });
+		const answer = await prisma.answer.findFirst({
+			where: { attemptId, questionId: question.id },
+			select: { id: true },
+		});
+		if (answer)
+			await prisma.answer.update({
+				where: { id: answer.id },
+				data: { response: chosen.sourceCode },
+			});
+		else
+			await prisma.answer.create({
+				data: {
+					attemptId,
+					questionId: question.id,
+					response: chosen.sourceCode,
+					originalResponse: chosen.sourceCode,
+				},
+			});
+		const existingJob = await prisma.codeEvaluationJob.findFirst({
+			where: { submissionId: chosen.id, status: { in: ["pending", "processing"] } },
+		});
 		if (!existingJob && chosen.status === "PENDING") {
 			await prisma.codeEvaluationJob.create({ data: { submissionId: chosen.id, trigger: "auto" } });
 			queued.push(chosen.id);

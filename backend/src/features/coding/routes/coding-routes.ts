@@ -13,10 +13,22 @@ router.get("/languages", c.languagesHandler);
 router.post("/playground/run", requireRole("user", "faculty", "admin"), c.playgroundRunHandler);
 
 // Student coding workspace (attempt owner only; writes only while the attempt is in progress)
-router.get("/attempts/:attemptId/questions/:questionId/workspace", requireRole("user"), c.workspaceHandler);
-router.put("/attempts/:attemptId/questions/:questionId/draft", requireRole("user"), c.saveDraftHandler);
+router.get(
+	"/attempts/:attemptId/questions/:questionId/workspace",
+	requireRole("user"),
+	c.workspaceHandler,
+);
+router.put(
+	"/attempts/:attemptId/questions/:questionId/draft",
+	requireRole("user"),
+	c.saveDraftHandler,
+);
 router.post("/attempts/:attemptId/questions/:questionId/run", requireRole("user"), c.runHandler);
-router.post("/attempts/:attemptId/questions/:questionId/submit", requireRole("user"), c.submitHandler);
+router.post(
+	"/attempts/:attemptId/questions/:questionId/submit",
+	requireRole("user"),
+	c.submitHandler,
+);
 router.get("/executions/:id", c.getExecutionHandler);
 
 // Faculty: builder sandbox + Flagged Code Submissions

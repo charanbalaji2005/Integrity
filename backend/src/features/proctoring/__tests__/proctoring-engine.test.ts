@@ -4,12 +4,11 @@ import { EvidenceFusionEngine } from "../evidence/evidence-fusion";
 import { estimateHeadPose } from "../perception/pose-estimator";
 import { ProctorEventDeduplicator } from "../temporal/event-deduplicator";
 import { ProctorEventStateMachine } from "../temporal/event-state-machine";
-import { TemporalSignalBuffer } from "../temporal/signal-buffer";
 
 describe("Proctoring Perception & Pose Estimator", () => {
 	it("should calculate center gaze when landmarks are symmetric", () => {
 		// Mock 68 landmark points
-		const mockPoints = Array.from({ length: 68 }, (_, i) => ({ x: 100, y: 100 }));
+		const mockPoints = Array.from({ length: 68 }, (_, _i) => ({ x: 100, y: 100 }));
 		// Left jaw edge: x = 50, Right jaw edge: x = 150
 		mockPoints[0] = { x: 50, y: 100 };
 		mockPoints[16] = { x: 150, y: 100 };

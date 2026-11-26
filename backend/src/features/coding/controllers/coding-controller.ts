@@ -9,21 +9,39 @@ import { CODE_LANGUAGES, isCodeLanguage, LANGUAGE_SPECS, MAX_STDIN_BYTES } from 
 import { createExecution, getExecutionForUser } from "../services/execution-service";
 import { executorHealth } from "../services/judge0-client";
 import { parseCodingConfig } from "../services/question-config";
-import { applyAction, getReview, listFlags, reevaluateFlagged, type Reviewer } from "../services/review-service";
-import { assertLanguage, assertSource, getWorkspace, loadStudentContext, saveDraft, submitFromStudent } from "../services/workspace-service";
+import {
+	applyAction,
+	getReview,
+	listFlags,
+	type Reviewer,
+	reevaluateFlagged,
+} from "../services/review-service";
+import {
+	assertLanguage,
+	assertSource,
+	getWorkspace,
+	loadStudentContext,
+	saveDraft,
+	submitFromStudent,
+} from "../services/workspace-service";
 
 const p = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
 
 function parse<T>(schema: z.ZodType<T>, body: unknown): T {
 	const r = schema.safeParse(body);
-	if (!r.success) throw new AppError(r.error.issues.map((i) => i.message).join("; "), HTTP_STATUS.BAD_REQUEST);
+	if (!r.success)
+		throw new AppError(r.error.issues.map((i) => i.message).join("; "), HTTP_STATUS.BAD_REQUEST);
 	return r.data;
 }
 
 async function reviewer(req: Request): Promise<Reviewer> {
 	const u = getAuthUser(req);
-	const db = await prisma.user.findUnique({ where: { id: u.id }, select: { id: true, name: true, role: true, section: true } });
-	if (!db || (db.role !== "faculty" && db.role !== "admin")) throw new AppError("Faculty access required", HTTP_STATUS.FORBIDDEN);
+	const db = await prisma.user.findUnique({
+		where: { id: u.id },
+		select: { id: true, name: true, role: true, section: true },
+	});
+	if (!db || (db.role !== "faculty" && db.role !== "admin"))
+		throw new AppError("Faculty access required", HTTP_STATUS.FORBIDDEN);
 	return db;
 }
 
@@ -31,22 +49,39 @@ async function reviewer(req: Request): Promise<Reviewer> {
 
 export async function healthHandler(_req: Request, res: Response) {
 	const h = await executorHealth();
-	sendSuccess(res, {
-		...h,
-		supported: CODE_LANGUAGES.map((k) => ({ key: k, label: LANGUAGE_SPECS[k].label, monaco: LANGUAGE_SPECS[k].monaco, available: h.languages[k] })),
-	}, "Execution service status");
+	sendSuccess(
+		res,
+		{
+			...h,
+			supported: CODE_LANGUAGES.map((k) => ({
+				key: k,
+				label: LANGUAGE_SPECS[k].label,
+				monaco: LANGUAGE_SPECS[k].monaco,
+				available: h.languages[k],
+			})),
+		},
+		"Execution service status",
+	);
 }
 
 /* ───────── student ───────── */
 
 export async function workspaceHandler(req: Request, res: Response) {
 	const u = getAuthUser(req);
-	sendSuccess(res, await getWorkspace(u.id, p(req.params.attemptId), p(req.params.questionId)), "Workspace");
+	sendSuccess(
+		res,
+		await getWorkspace(u.id, p(req.params.attemptId), p(req.params.questionId)),
+		"Workspace",
+	);
 }
 
 export async function saveDraftHandler(req: Request, res: Response) {
 	const u = getAuthUser(req);
-	sendSuccess(res, await saveDraft(u.id, p(req.params.attemptId), p(req.params.questionId), req.body ?? {}), "Draft saved");
+	sendSuccess(
+		res,
+		await saveDraft(u.id, p(req.params.attemptId), p(req.params.questionId), req.body ?? {}),
+		"Draft saved",
+	);
 }
 
 const runSchema = z.object({
@@ -59,7 +94,12 @@ const runSchema = z.object({
 export async function runHandler(req: Request, res: Response) {
 	const u = getAuthUser(req);
 	const body = parse(runSchema, req.body);
-	const { attempt, question, config } = await loadStudentContext(u.id, p(req.params.attemptId), p(req.params.questionId), { write: true });
+	const { attempt, question, config } = await loadStudentContext(
+		u.id,
+		p(req.params.attemptId),
+		p(req.params.questionId),
+		{ write: true },
+	);
 	const language = assertLanguage(body.language, config.allowedLanguages);
 	const sourceCode = assertSource(body.sourceCode);
 	const exec = await createExecution({
@@ -85,7 +125,17 @@ export async function getExecutionHandler(req: Request, res: Response) {
 
 export async function submitHandler(req: Request, res: Response) {
 	const u = getAuthUser(req);
-	sendSuccess(res, await submitFromStudent(u.id, p(req.params.attemptId), p(req.params.questionId), req.body ?? {}), "Answer submitted", HTTP_STATUS.CREATED);
+	sendSuccess(
+		res,
+		await submitFromStudent(
+			u.id,
+			p(req.params.attemptId),
+			p(req.params.questionId),
+			req.body ?? {},
+		),
+		"Answer submitted",
+		HTTP_STATUS.CREATED,
+	);
 }
 
 /* ───────── faculty ───────── */
@@ -99,21 +149,40 @@ const facultyRunSchema = z.object({
 	questionId: z.string().optional(),
 	timeLimitMs: z.number().int().min(500).max(10000).optional(),
 	memoryLimitMb: z.number().int().min(32).max(512).optional(),
-	testCases: z.array(z.object({ input: z.string().max(5000), output: z.string().max(5000), hidden: z.boolean().optional() })).max(50).optional(),
+	testCases: z
+		.array(
+			z.object({
+				input: z.string().max(5000),
+				output: z.string().max(5000),
+				hidden: z.boolean().optional(),
+			}),
+		)
+		.max(50)
+		.optional(),
 });
 
 export async function facultyRunHandler(req: Request, res: Response) {
 	const r = await reviewer(req);
 	const body = parse(facultyRunSchema, req.body);
-	if (!isCodeLanguage(body.language)) throw new AppError("Use c, cpp, java or python.", HTTP_STATUS.BAD_REQUEST);
+	if (!isCodeLanguage(body.language))
+		throw new AppError("Use c, cpp, java or python.", HTTP_STATUS.BAD_REQUEST);
 	let config = parseCodingConfig(null);
 	if (body.questionId) {
-		const q = await prisma.question.findUnique({ where: { id: body.questionId }, include: { assessment: { select: { facultyId: true } } } });
-		if (!q || (r.role !== "admin" && q.assessment.facultyId !== r.id)) throw new AppError("Question not found", HTTP_STATUS.NOT_FOUND);
+		const q = await prisma.question.findUnique({
+			where: { id: body.questionId },
+			include: { assessment: { select: { facultyId: true } } },
+		});
+		if (!q || (r.role !== "admin" && q.assessment.facultyId !== r.id))
+			throw new AppError("Question not found", HTTP_STATUS.NOT_FOUND);
 		config = parseCodingConfig(q.config);
 	}
 	// Faculty may run against all tests (including hidden) from the builder.
-	const tests = body.testCases?.map((t) => ({ input: t.input, output: t.output, hidden: t.hidden !== false })) ?? config.testCases;
+	const tests =
+		body.testCases?.map((t) => ({
+			input: t.input,
+			output: t.output,
+			hidden: t.hidden !== false,
+		})) ?? config.testCases;
 	const exec = await createExecution({
 		userId: r.id,
 		attemptId: null,
@@ -133,7 +202,18 @@ export async function facultyRunHandler(req: Request, res: Response) {
 export async function listFlagsHandler(req: Request, res: Response) {
 	const r = await reviewer(req);
 	const q = req.query as Record<string, string | undefined>;
-	sendSuccess(res, await listFlags(r, { status: q.status, assessmentId: q.assessmentId, courseId: q.courseId, language: q.language, reason: q.reason, q: q.q?.slice(0, 100) }), "Flagged submissions");
+	sendSuccess(
+		res,
+		await listFlags(r, {
+			status: q.status,
+			assessmentId: q.assessmentId,
+			courseId: q.courseId,
+			language: q.language,
+			reason: q.reason,
+			q: q.q?.slice(0, 100),
+		}),
+		"Flagged submissions",
+	);
 }
 
 export async function reviewHandler(req: Request, res: Response) {
@@ -142,7 +222,14 @@ export async function reviewHandler(req: Request, res: Response) {
 }
 
 const actionSchema = z.object({
-	action: z.enum(["approve_ai", "override", "reevaluate", "request_second_review", "mark_reviewed", "remark"]),
+	action: z.enum([
+		"approve_ai",
+		"override",
+		"reevaluate",
+		"request_second_review",
+		"mark_reviewed",
+		"remark",
+	]),
 	marks: z.number().optional(),
 	remark: z.string().max(2000).optional(),
 	explanation: z.string().max(2000).optional(),
@@ -158,7 +245,11 @@ export async function actionHandler(req: Request, res: Response) {
 export async function reevaluateFlaggedHandler(req: Request, res: Response) {
 	const r = await reviewer(req);
 	const body = parse(z.object({ questionId: z.string().max(40).optional() }), req.body ?? {});
-	sendSuccess(res, await reevaluateFlagged(r, p(req.params.assessmentId), body.questionId), "Re-evaluation queued");
+	sendSuccess(
+		res,
+		await reevaluateFlagged(r, p(req.params.assessmentId), body.questionId),
+		"Re-evaluation queued",
+	);
 }
 
 /* ───────────────────────── Compiler playground (student portal) ───────────────────────── */
@@ -191,7 +282,8 @@ const playgroundSchema = z.object({
 export async function playgroundRunHandler(req: Request, res: Response) {
 	const u = getAuthUser(req);
 	const body = parse(playgroundSchema, req.body);
-	if (!isCodeLanguage(body.language)) throw new AppError("Choose C, C++, Java or Python.", HTTP_STATUS.BAD_REQUEST);
+	if (!isCodeLanguage(body.language))
+		throw new AppError("Choose C, C++, Java or Python.", HTTP_STATUS.BAD_REQUEST);
 	const exec = await createExecution({
 		userId: u.id,
 		attemptId: null,

@@ -51,13 +51,13 @@ function extractJSON(text: string): any {
 	try {
 		// Attempt standard parse
 		return JSON.parse(text);
-	} catch (err) {
+	} catch {
 		// Attempt parsing code blocks
 		const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-		if (match && match[1]) {
+		if (match?.[1]) {
 			try {
 				return JSON.parse(match[1]);
-			} catch (err2) {
+			} catch {
 				// Fall through
 			}
 		}
@@ -69,7 +69,7 @@ function extractJSON(text: string): any {
 	if (firstBrace !== -1 && lastBrace !== -1) {
 		try {
 			return JSON.parse(text.substring(firstBrace, lastBrace + 1));
-		} catch (e) {
+		} catch {
 			// Fail
 		}
 	}
@@ -81,7 +81,7 @@ function extractJSON(text: string): any {
  * Analyzes length, keyword matches, and syntactic details to return a dynamic, realistic score.
  */
 export function getFallbackEvaluation(
-	questionText: string,
+	_questionText: string,
 	correctAnswer: string,
 	studentAnswer: string,
 	maxPoints: number,
@@ -227,7 +227,7 @@ export async function evaluateWithGroq(
 				};
 			}
 		}
-	} catch (err) {
+	} catch {
 		// Fail open to local fallback
 	}
 
@@ -295,7 +295,7 @@ export async function evaluateWithOllama(
 				};
 			}
 		}
-	} catch (err) {
+	} catch {
 		// Fail open to local fallback
 	}
 

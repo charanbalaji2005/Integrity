@@ -6,10 +6,16 @@ import { getAuthUser } from "@/middleware/auth-middleware";
 import { getIO } from "@/providers/socket";
 import { AppError } from "@/utils/app-error";
 import { departmentForSection, normalizeSemester } from "@/utils/departments";
-import { SECTION_CODE_RE, canSeeStudentSection, normalizeSectionCode } from "@/utils/faculty-sections";
-import { isMultiPortalEmail } from "@/utils/multi-portal";
+import {
+	canSeeStudentSection,
+	normalizeSectionCode,
+	SECTION_CODE_RE,
+} from "@/utils/faculty-sections";
 import { sendSuccess } from "@/utils/response";
-import { ALL_SECTIONS, getAccessibleMaterial } from "../../study-materials/services/study-material-service";
+import {
+	ALL_SECTIONS,
+	getAccessibleMaterial,
+} from "../../study-materials/services/study-material-service";
 
 /**
  * POST /api/chat/announcements
@@ -32,14 +38,19 @@ const announcementSchema = z.object({
 export async function postAnnouncement(req: Request, res: Response): Promise<void> {
 	const user = getAuthUser(req);
 	if (user.role !== "faculty" && user.role !== "admin") {
-		throw new AppError("Only faculty and administrators can broadcast announcements.", HTTP_STATUS.FORBIDDEN);
+		throw new AppError(
+			"Only faculty and administrators can broadcast announcements.",
+			HTTP_STATUS.FORBIDDEN,
+		);
 	}
 	const parsed = announcementSchema.safeParse(req.body);
 	if (!parsed.success) {
-		throw new AppError(parsed.error.issues[0]?.message ?? "Invalid announcement.", HTTP_STATUS.BAD_REQUEST);
+		throw new AppError(
+			parsed.error.issues[0]?.message ?? "Invalid announcement.",
+			HTTP_STATUS.BAD_REQUEST,
+		);
 	}
 	const { target, content, materialId } = parsed.data;
-	const unrestricted = user.role === "admin" || isMultiPortalEmail(user.email);
 
 	let roomId = "college";
 	let department: string | null = null;
@@ -62,10 +73,14 @@ export async function postAnnouncement(req: Request, res: Response): Promise<voi
 		}
 		if (!semester) throw new AppError("Choose the semester (1–8).", HTTP_STATUS.BAD_REQUEST);
 		if (!canSeeStudentSection(user, section)) {
-			throw new AppError(`You can only broadcast to your own sections (not ${section}).`, HTTP_STATUS.FORBIDDEN);
+			throw new AppError(
+				`You can only broadcast to your own sections (not ${section}).`,
+				HTTP_STATUS.FORBIDDEN,
+			);
 		}
 		department = departmentForSection(section);
-		if (!department) throw new AppError(`Unknown department for section ${section}.`, HTTP_STATUS.BAD_REQUEST);
+		if (!department)
+			throw new AppError(`Unknown department for section ${section}.`, HTTP_STATUS.BAD_REQUEST);
 		// Must match the student room key: class:<department>:<"Semester N">:<section>
 		roomId = `class:${department}:${semester}:${section}`;
 	}
@@ -99,12 +114,16 @@ export async function postAnnouncement(req: Request, res: Response): Promise<voi
 		},
 	});
 
-	getIO()?.to(roomId).emit("new-message", { ...saved, roomId, attachments });
+	getIO()
+		?.to(roomId)
+		.emit("new-message", { ...saved, roomId, attachments });
 
 	sendSuccess(
 		res,
 		{ id: saved.id, roomId },
-		target === "college" ? "Announcement sent to the entire college" : `Announcement sent to ${section} · ${semester}`,
+		target === "college"
+			? "Announcement sent to the entire college"
+			: `Announcement sent to ${section} · ${semester}`,
 		HTTP_STATUS.CREATED,
 	);
 }

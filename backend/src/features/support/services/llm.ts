@@ -10,7 +10,10 @@ export interface ChatMessage {
  * no provider answers — callers must then fall back to deterministic,
  * documentation-based output rather than inventing a response.
  */
-export async function callLLM(messages: ChatMessage[], opts: { json?: boolean; timeoutMs?: number } = {}): Promise<string | null> {
+export async function callLLM(
+	messages: ChatMessage[],
+	opts: { json?: boolean; timeoutMs?: number } = {},
+): Promise<string | null> {
 	const timeoutMs = opts.timeoutMs ?? 15000;
 
 	if (env.GROQ_API_KEY) {
@@ -19,7 +22,10 @@ export async function callLLM(messages: ChatMessage[], opts: { json?: boolean; t
 		try {
 			const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
 				method: "POST",
-				headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.GROQ_API_KEY}` },
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${env.GROQ_API_KEY}`,
+				},
 				body: JSON.stringify({
 					model: env.GROQ_CHAT_MODEL,
 					messages,
@@ -48,7 +54,12 @@ export async function callLLM(messages: ChatMessage[], opts: { json?: boolean; t
 		const res = await fetch(`${env.OLLAMA_BASE_URL.replace(/\/$/, "")}/api/chat`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ model: env.OLLAMA_CHAT_MODEL, messages, stream: false, ...(opts.json ? { format: "json" } : {}) }),
+			body: JSON.stringify({
+				model: env.OLLAMA_CHAT_MODEL,
+				messages,
+				stream: false,
+				...(opts.json ? { format: "json" } : {}),
+			}),
 			signal: ctrl.signal,
 		});
 		if (res.ok) {

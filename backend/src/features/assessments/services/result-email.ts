@@ -16,7 +16,10 @@ import { buildResultPdf } from "./result-pdf";
 const SENT_EVENT = "Results Emailed";
 
 const esc = (v: unknown) =>
-	String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
+	String(v ?? "").replace(
+		/[&<>"']/g,
+		(c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string,
+	);
 
 const TYPE_LABEL: Record<string, string> = {
 	"multiple-choice": "Multiple choice",
@@ -73,21 +76,47 @@ export interface ResultEmailContent {
 /** Builds the email (pure; exported for tests and previews). */
 export function buildResultEmail(input: {
 	studentName: string;
-	assessment: { title: string; institutionName: string; facultyName: string; passingMarks: number | null; totalMarks: number | null; gradingScheme: string };
-	attempt: { submittedAt: Date | null; integrityScore: number; riskLevel: string | null; certificateNumber: string | null; verificationCode: string | null };
-	questions: { order: number; type: string; points: number; awarded: number | null; underReview: boolean }[];
+	assessment: {
+		title: string;
+		institutionName: string;
+		facultyName: string;
+		passingMarks: number | null;
+		totalMarks: number | null;
+		gradingScheme: string;
+	};
+	attempt: {
+		submittedAt: Date | null;
+		integrityScore: number;
+		riskLevel: string | null;
+		certificateNumber: string | null;
+		verificationCode: string | null;
+	};
+	questions: {
+		order: number;
+		type: string;
+		points: number;
+		awarded: number | null;
+		underReview: boolean;
+	}[];
 	portalUrl: string;
 }): ResultEmailContent {
 	const { studentName, assessment: a, attempt: t, questions, portalUrl } = input;
 	const total = a.totalMarks ?? questions.reduce((s, q) => s + q.points, 0);
-	const scored = Math.max(0, questions.reduce((s, q) => s + (q.awarded ?? 0), 0));
+	const scored = Math.max(
+		0,
+		questions.reduce((s, q) => s + (q.awarded ?? 0), 0),
+	);
 	const pct = total > 0 ? Math.round((scored / total) * 100) : 0;
 	const pending = questions.filter((q) => q.underReview).length;
 	const passed = a.passingMarks != null ? scored >= a.passingMarks : null;
 	const integrity = Math.round(t.integrityScore);
 	const outcome = outcomeOf(integrity, t.riskLevel);
 	const first = studentName.split(" ")[0] || studentName;
-	const submitted = (t.submittedAt ?? new Date()).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+	const submitted = (t.submittedAt ?? new Date()).toLocaleDateString("en-GB", {
+		day: "numeric",
+		month: "long",
+		year: "numeric",
+	});
 	const gradeLine =
 		a.gradingScheme === "letter"
 			? `Grade ${letterGrade(pct)}`
@@ -196,7 +225,9 @@ export function buildResultEmail(input: {
 		`Your results for "${a.title}" (${submitted}) are ready.`,
 		`Score: ${round(scored)} / ${round(total)} (${gradeLine})${passed != null ? ` — ${passed ? "Passed" : "Below pass mark"}` : ""}`,
 		`Integrity index: ${integrity}% — ${outcome.label}`,
-		pending > 0 ? `${pending} answer(s) are still under faculty review; your final score may change.` : "",
+		pending > 0
+			? `${pending} answer(s) are still under faculty review; your final score may change.`
+			: "",
 		"",
 		`Certificate No. ${certNo} · Verification code ${code} (certificate and results attached as PDF)`,
 		`View full results: ${portalUrl}`,
@@ -204,7 +235,12 @@ export function buildResultEmail(input: {
 		.filter((l, i, arr) => l !== "" || arr[i - 1] !== "")
 		.join("\n");
 
-	const safe = (s: string) => s.replace(/[^\w-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
+	const safe = (s: string) =>
+		s
+			.replace(/[^\w-]+/g, "-")
+			.replace(/-+/g, "-")
+			.replace(/^-|-$/g, "")
+			.slice(0, 60);
 
 	return {
 		subject: `Your results & certificate — ${a.title}`,
@@ -234,14 +270,25 @@ export async function sendResultEmail(attemptId: string): Promise<"sent" | "skip
 						passingMarks: true,
 						totalMarks: true,
 						gradingScheme: true,
-						questions: { orderBy: { order: "asc" }, select: { id: true, order: true, type: true, points: true } },
+						questions: {
+							orderBy: { order: "asc" },
+							select: { id: true, order: true, type: true, points: true },
+						},
 					},
 				},
-				answers: { select: { questionId: true, aiGrade: true, manualGrade: true, isFlagged: true } },
+				answers: {
+					select: { questionId: true, aiGrade: true, manualGrade: true, isFlagged: true },
+				},
 			},
 		})
 		.catch(() => null);
-	if (!attempt || attempt.status === "reset" || !attempt.student?.email || !attempt.certificateNumber) return "skipped";
+	if (
+		!attempt ||
+		attempt.status === "reset" ||
+		!attempt.student?.email ||
+		!attempt.certificateNumber
+	)
+		return "skipped";
 	if (attempt.resultEmailSentAt) return "skipped";
 
 	// 2. Atomic claim: only one caller (across workers and server instances) gets count === 1.
@@ -261,7 +308,9 @@ export async function sendResultEmail(attemptId: string): Promise<"sent" | "skip
 				type: q.type,
 				points: q.points,
 				awarded,
-				underReview: Boolean(ans && (awarded == null || (ans.isFlagged && ans.manualGrade == null))),
+				underReview: Boolean(
+					ans && (awarded == null || (ans.isFlagged && ans.manualGrade == null)),
+				),
 			};
 		});
 		const studentName = attempt.studentName || attempt.student.name;
@@ -286,16 +335,33 @@ export async function sendResultEmail(attemptId: string): Promise<"sent" | "skip
 			subject: content.subject,
 			html: content.html,
 			text: content.text,
-			attachments: [{ filename: content.attachmentName, content: Buffer.from(pdf), contentType: "application/pdf" }],
+			attachments: [
+				{
+					filename: content.attachmentName,
+					content: Buffer.from(pdf),
+					contentType: "application/pdf",
+				},
+			],
 		});
 		await prisma.proctoringTimelineEvent
-			.create({ data: { attemptId, event: SENT_EVENT, details: JSON.stringify({ certificateNumber: attempt.certificateNumber, format: "pdf" }) } })
+			.create({
+				data: {
+					attemptId,
+					event: SENT_EVENT,
+					details: JSON.stringify({ certificateNumber: attempt.certificateNumber, format: "pdf" }),
+				},
+			})
 			.catch(() => {});
 		return "sent";
 	} catch (err) {
 		// Not delivered — release the claim so a later evaluation can retry.
-		await prisma.assessmentAttempt.update({ where: { id: attemptId }, data: { resultEmailSentAt: null } }).catch(() => {});
-		console.error("[ResultEmail] Could not send results email:", err instanceof Error ? err.message : err);
+		await prisma.assessmentAttempt
+			.update({ where: { id: attemptId }, data: { resultEmailSentAt: null } })
+			.catch(() => {});
+		console.error(
+			"[ResultEmail] Could not send results email:",
+			err instanceof Error ? err.message : err,
+		);
 		return "failed";
 	}
 }

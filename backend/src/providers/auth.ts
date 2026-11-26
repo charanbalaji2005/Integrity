@@ -2,12 +2,12 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { bearer, magicLink, openAPI } from "better-auth/plugins";
-
+import { errorMessage } from "@/utils/error-message";
 import { env } from "../config/env";
 import { prisma } from "../database";
+import { maskEmail } from "../features/authentication/services/two-factor-service";
 import { verifyFace } from "../features/proctoring/services/proctoring-service";
 import { sendEmail } from "../services/mail";
-import { maskEmail } from "../features/authentication/services/two-factor-service";
 import { requestContextStore } from "../utils/request-context";
 
 export function isAuthorizedInstitutionalEmail(email: string): boolean {
@@ -119,9 +119,13 @@ export const auth = betterAuth({
 							identifier: `verified-register-email:${email}`,
 						},
 					});
-					if (!verifiedRecord || (verifiedRecord.expiresAt && verifiedRecord.expiresAt.getTime() <= Date.now())) {
+					if (
+						!verifiedRecord ||
+						(verifiedRecord.expiresAt && verifiedRecord.expiresAt.getTime() <= Date.now())
+					) {
 						throw new APIError("BAD_REQUEST", {
-							message: "Email verification is required before registration. Please verify the code sent to your email.",
+							message:
+								"Email verification is required before registration. Please verify the code sent to your email.",
 						});
 					}
 					// Clean up the verified token after one-time use
@@ -138,9 +142,9 @@ export const auth = betterAuth({
 									message: "Face verification failed: No face detected in the captured image.",
 								});
 							}
-						} catch (err: any) {
+						} catch (err) {
 							throw new APIError("BAD_REQUEST", {
-								message: err.message || "Face verification failed.",
+								message: errorMessage(err, "Face verification failed."),
 							});
 						}
 					}

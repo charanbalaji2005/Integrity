@@ -95,7 +95,7 @@ export async function getEmbedding(text: string): Promise<number[]> {
 				return data.embedding;
 			}
 		}
-	} catch (err) {
+	} catch {
 		// Ollama not running or model not found, silent fallback to pseudo embedding
 	}
 
@@ -177,7 +177,7 @@ export async function findSimilarAnswers(
 				overrideStatus: ans.overrideStatus,
 				studentName: ans.attempt.studentName,
 			});
-		} catch (e) {
+		} catch {
 			// Ignore malformed embeddings
 		}
 	}

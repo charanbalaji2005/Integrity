@@ -140,7 +140,7 @@ export function startSelfHealingAgent() {
 		// 1. Verify DB connection
 		try {
 			await prisma.$queryRaw`SELECT 1;`;
-		} catch (err) {
+		} catch {
 			logSelfHealingAction(
 				"PostgreSQL Connection Pool",
 				"Connection pool was drop-disconnected. Executing auto-reconnect strategy...",
@@ -154,7 +154,7 @@ export function startSelfHealingAgent() {
 					"Database connection pool successfully re-established.",
 					"HEALED",
 				);
-			} catch (reconnectErr) {
+			} catch {
 				logSelfHealingAction(
 					"PostgreSQL Connection Pool",
 					"Auto-reconnect failed. Retrying in background...",

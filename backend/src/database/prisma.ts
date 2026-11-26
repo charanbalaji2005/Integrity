@@ -7,7 +7,10 @@ const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
 // Clean connection string (e.g. strip channel_binding=require if present since pg driver handles TLS directly)
 function sanitizeConnectionString(rawUrl: string): string {
-	return rawUrl.replace(/&channel_binding=[^&]+/g, "").replace(/\?channel_binding=[^&]+&?/g, "?").replace(/\?$/, "");
+	return rawUrl
+		.replace(/&channel_binding=[^&]+/g, "")
+		.replace(/\?channel_binding=[^&]+&?/g, "?")
+		.replace(/\?$/, "");
 }
 
 function createPrismaClient() {

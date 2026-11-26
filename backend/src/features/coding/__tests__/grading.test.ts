@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { allowedLanguagesFor } from "../languages";
-import { type AiAnalysis, grade, type GradeInput, outputsMatch } from "../services/grading";
+import { type AiAnalysis, type GradeInput, grade, outputsMatch } from "../services/grading";
 import { classify, normalizeResult } from "../services/judge0-client";
 import { parseCodingConfig, starterFor } from "../services/question-config";
 
@@ -53,12 +53,20 @@ describe("grading", () => {
 	});
 
 	it("AI cannot award more than the faculty max for a criterion", () => {
-		const g = grade({ ...base, ai: ai({ criteria: [{ criterion: "Logic & approach", awarded: 50, max: 1 }] }) });
+		const g = grade({
+			...base,
+			ai: ai({ criteria: [{ criterion: "Logic & approach", awarded: 50, max: 1 }] }),
+		});
 		expect(g.aiMarks).toBe(1);
 	});
 
 	it("compilation error: zero test marks, rubric capped at half, not flagged just for failing to compile", () => {
-		const g = grade({ ...base, compileStatus: "compilation_error", testsPassed: 0, ai: ai({ logicCorrect: false }) });
+		const g = grade({
+			...base,
+			compileStatus: "compilation_error",
+			testsPassed: 0,
+			ai: ai({ logicCorrect: false }),
+		});
 		expect(g.testMarks).toBe(0);
 		expect(g.aiMarks).toBe(1); // (1+1+0) × 0.5
 		expect(g.flagReasons).toEqual([]);
@@ -71,12 +79,20 @@ describe("grading", () => {
 	});
 
 	it("flags when all tests pass but AI says the algorithm is wrong", () => {
-		expect(grade({ ...base, ai: ai({ logicCorrect: false }) }).flagReasons[0]!.code).toBe("contradictory_evidence");
+		expect(grade({ ...base, ai: ai({ logicCorrect: false }) }).flagReasons[0]!.code).toBe(
+			"contradictory_evidence",
+		);
 	});
 
 	it("flags suspected hard-coded output and ambiguous questions", () => {
-		expect(grade({ ...base, ai: ai({ suspectedHardcoding: true }) }).flagReasons.map((f) => f.code)).toContain("suspected_hardcoding");
-		expect(grade({ ...base, ai: ai({ ambiguity: "Input format unspecified" }) }).flagReasons.map((f) => f.code)).toContain("ambiguous_question");
+		expect(
+			grade({ ...base, ai: ai({ suspectedHardcoding: true }) }).flagReasons.map((f) => f.code),
+		).toContain("suspected_hardcoding");
+		expect(
+			grade({ ...base, ai: ai({ ambiguity: "Input format unspecified" }) }).flagReasons.map(
+				(f) => f.code,
+			),
+		).toContain("ambiguous_question");
 	});
 
 	it("no test cases → cannot verify correctness → flagged", () => {
@@ -98,7 +114,13 @@ describe("grading", () => {
 	});
 
 	it("100% test weight ignores AI scores entirely", () => {
-		const g = grade({ ...base, testWeightPercent: 100, testsPassed: 2, testsTotal: 4, ai: ai({ logicCorrect: null }) });
+		const g = grade({
+			...base,
+			testWeightPercent: 100,
+			testsPassed: 2,
+			testsTotal: 4,
+			ai: ai({ logicCorrect: null }),
+		});
 		expect(g.suggestedMarks).toBe(5);
 	});
 
@@ -109,7 +131,12 @@ describe("grading", () => {
 				{ criterion: "Logic & approach", marks: 3 },
 				{ criterion: "Efficiency", marks: 1 },
 			],
-			ai: ai({ criteria: [{ criterion: "Logic & approach", awarded: 3, max: 3 }, { criterion: "Efficiency", awarded: 0, max: 1 }] }),
+			ai: ai({
+				criteria: [
+					{ criterion: "Logic & approach", awarded: 3, max: 3 },
+					{ criterion: "Efficiency", awarded: 0, max: 1 },
+				],
+			}),
 		});
 		expect(g.aiMarks).toBe(2.25); // 3 marks × 3/4
 	});
@@ -125,11 +152,23 @@ describe("judge0 status mapping", () => {
 		expect(classify(13, "", null, 262144, "c")).toBe("infra_error");
 	});
 	it("python syntax errors count as compile errors; OOM counts as memory limit", () => {
-		expect(classify(11, '  File "main.py", line 2\nSyntaxError: invalid syntax', 1000, 262144, "python")).toBe("compilation_error");
+		expect(
+			classify(11, '  File "main.py", line 2\nSyntaxError: invalid syntax', 1000, 262144, "python"),
+		).toBe("compilation_error");
 		expect(classify(11, "java.lang.OutOfMemoryError", 1000, 262144, "java")).toBe("memory_limit");
 	});
 	it("decodes base64 output", () => {
-		const r = normalizeResult({ token: "t", status: { id: 3, description: "Accepted" }, stdout: Buffer.from("120\n").toString("base64"), time: "0.012", memory: 3200 }, "cpp", 256);
+		const r = normalizeResult(
+			{
+				token: "t",
+				status: { id: 3, description: "Accepted" },
+				stdout: Buffer.from("120\n").toString("base64"),
+				time: "0.012",
+				memory: 3200,
+			},
+			"cpp",
+			256,
+		);
 		expect(r.stdout).toBe("120\n");
 		expect(r.timeMs).toBe(12);
 		expect(r.verdict).toBe("accepted");
@@ -139,10 +178,19 @@ describe("judge0 status mapping", () => {
 describe("question config", () => {
 	it("defaults to all four languages with the faculty language first", () => {
 		expect(allowedLanguagesFor({ language: "java" })).toEqual(["java", "c", "cpp", "python"]);
-		expect(allowedLanguagesFor({ language: "javascript", allowedLanguages: ["python", "go"] })).toEqual(["python"]);
+		expect(
+			allowedLanguagesFor({ language: "javascript", allowedLanguages: ["python", "go"] }),
+		).toEqual(["python"]);
 	});
 	it("parses limits safely and uses faculty starter only for their language", () => {
-		const c = parseCodingConfig(JSON.stringify({ language: "cpp", starterCode: "// mine", timeLimitMs: 999999, testCases: [{ input: "5", output: "120" }] }));
+		const c = parseCodingConfig(
+			JSON.stringify({
+				language: "cpp",
+				starterCode: "// mine",
+				timeLimitMs: 999999,
+				testCases: [{ input: "5", output: "120" }],
+			}),
+		);
 		expect(c.timeLimitMs).toBe(10000);
 		expect(c.testCases[0]!.hidden).toBe(true);
 		expect(starterFor(c, "cpp")).toBe("// mine");

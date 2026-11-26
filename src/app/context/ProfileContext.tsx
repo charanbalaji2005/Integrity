@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { apiFetch } from "../utils/api-client";
+import { TwoFactorToggleDialog } from "../components/auth/TwoFactorToggleDialog";
 
 export interface UserProfile {
   id: string;
@@ -141,25 +142,21 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({
     }
   };
 
-  const toggle2FA = async (enabled: boolean): Promise<boolean> => {
-    try {
-      const res = await apiFetch("/api/profile/2fa", {
-        method: "POST",
-        body: JSON.stringify({ enabled })
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        setProfile(updated.data || null);
-        toast.success(enabled ? "2FA security successfully enabled" : "2FA security successfully disabled");
-        return true;
-      } else {
-        toast.error("Failed to update 2FA configuration");
-        return false;
-      }
-    } catch {
-      toast.error("Network error configuring security");
-      return false;
-    }
+  // Turning 2FA on/off is confirmed with an emailed code (TwoFactorToggleDialog).
+  // The promise settles when the dialog closes: true if the change was applied.
+  const [twoFactorDialog, setTwoFactorDialog] = useState<{ enable: boolean } | null>(null);
+  const twoFactorResolver = React.useRef<((changed: boolean) => void) | null>(null);
+  const toggle2FA = (enabled: boolean): Promise<boolean> => {
+    twoFactorResolver.current?.(false);
+    setTwoFactorDialog({ enable: enabled });
+    return new Promise<boolean>((resolve) => {
+      twoFactorResolver.current = resolve;
+    });
+  };
+  const closeTwoFactorDialog = (changed: boolean) => {
+    twoFactorResolver.current?.(changed);
+    twoFactorResolver.current = null;
+    setTwoFactorDialog(null);
   };
 
   const fetchActivityHistory = useCallback(async () => {
@@ -230,6 +227,17 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({
       }}
     >
       {children}
+      <TwoFactorToggleDialog
+        open={!!twoFactorDialog}
+        enable={twoFactorDialog?.enable ?? true}
+        onOpenChange={(open) => {
+          if (!open) closeTwoFactorDialog(false);
+        }}
+        onChanged={(updated) => {
+          setProfile((updated as UserProfile) || null);
+          closeTwoFactorDialog(true);
+        }}
+      />
     </ProfileContext.Provider>
   );
 };

@@ -187,8 +187,8 @@ export async function getAssessmentResults(
 			};
 		})
 		.sort((x, y) =>
-			(x.registrationNumber || "~" + x.name).localeCompare(
-				y.registrationNumber || "~" + y.name,
+			(x.registrationNumber || `~${x.name}`).localeCompare(
+				y.registrationNumber || `~${y.name}`,
 				undefined,
 				{
 					numeric: true,

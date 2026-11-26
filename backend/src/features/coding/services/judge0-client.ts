@@ -1,6 +1,11 @@
 import { env } from "../../../config/env";
-import { LANGUAGE_SPECS, type CodeLanguage } from "../languages";
-import { fetchLocalRuns, localLanguagesAvailable, localToolchain, submitLocalRuns } from "./local-runner";
+import { type CodeLanguage, LANGUAGE_SPECS } from "../languages";
+import {
+	fetchLocalRuns,
+	localLanguagesAvailable,
+	localToolchain,
+	submitLocalRuns,
+} from "./local-runner";
 
 /**
  * Thin client for a self-hosted Judge0 CE instance. Judge0 runs every program
@@ -57,7 +62,8 @@ export function executorConfigured(): boolean {
 }
 
 function baseUrl(): string {
-	if (!env.JUDGE0_URL) throw new ExecutorUnavailableError("Code execution service is not configured (JUDGE0_URL).");
+	if (!env.JUDGE0_URL)
+		throw new ExecutorUnavailableError("Code execution service is not configured (JUDGE0_URL).");
 	return env.JUDGE0_URL.replace(/\/$/, "");
 }
 
@@ -68,24 +74,37 @@ function headers(): Record<string, string> {
 }
 
 const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64");
-const unb64 = (s: string | null | undefined) => (s ? Buffer.from(s, "base64").toString("utf8") : "");
-const clip = (s: string) => (s.length > MAX_OUTPUT ? `${s.slice(0, MAX_OUTPUT)}\n…[output truncated]` : s);
+const unb64 = (s: string | null | undefined) =>
+	s ? Buffer.from(s, "base64").toString("utf8") : "";
+const clip = (s: string) =>
+	s.length > MAX_OUTPUT ? `${s.slice(0, MAX_OUTPUT)}\n…[output truncated]` : s;
 
 async function call<T>(path: string, init: RequestInit = {}, timeoutMs = 15000): Promise<T> {
 	const ctrl = new AbortController();
 	const timer = setTimeout(() => ctrl.abort(), timeoutMs);
 	let res: Response;
 	try {
-		res = await fetch(`${baseUrl()}${path}`, { ...init, headers: { ...headers(), ...(init.headers as Record<string, string>) }, signal: ctrl.signal });
+		res = await fetch(`${baseUrl()}${path}`, {
+			...init,
+			headers: { ...headers(), ...(init.headers as Record<string, string>) },
+			signal: ctrl.signal,
+		});
 	} catch (err) {
-		throw new ExecutorUnavailableError(`Code execution service unreachable: ${(err as Error).message}`);
+		throw new ExecutorUnavailableError(
+			`Code execution service unreachable: ${(err as Error).message}`,
+		);
 	} finally {
 		clearTimeout(timer);
 	}
-	if (res.status === 401 || res.status === 403) throw new ExecutorUnavailableError("Code execution service rejected the auth token.");
-	if (res.status >= 500 || res.status === 503) throw new ExecutorUnavailableError(`Code execution service error (HTTP ${res.status}).`);
+	if (res.status === 401 || res.status === 403)
+		throw new ExecutorUnavailableError("Code execution service rejected the auth token.");
+	if (res.status >= 500 || res.status === 503)
+		throw new ExecutorUnavailableError(`Code execution service error (HTTP ${res.status}).`);
 	const body = (await res.json().catch(() => ({}))) as T;
-	if (!res.ok) throw new ExecutorUnavailableError(`Code execution service refused the request (HTTP ${res.status}): ${JSON.stringify(body).slice(0, 200)}`);
+	if (!res.ok)
+		throw new ExecutorUnavailableError(
+			`Code execution service refused the request (HTTP ${res.status}): ${JSON.stringify(body).slice(0, 200)}`,
+		);
 	return body;
 }
 
@@ -118,15 +137,20 @@ export async function submitRuns(runs: RunRequest[]): Promise<string[]> {
 			method: "POST",
 			body: JSON.stringify(toSubmission(runs[0]!)),
 		});
-		if (!r.token) throw new ExecutorUnavailableError("Code execution service did not return a token.");
+		if (!r.token)
+			throw new ExecutorUnavailableError("Code execution service did not return a token.");
 		return [r.token];
 	}
-	const r = await call<Array<{ token?: string; error?: unknown }>>("/submissions/batch?base64_encoded=true", {
-		method: "POST",
-		body: JSON.stringify({ submissions: runs.map(toSubmission) }),
-	});
+	const r = await call<Array<{ token?: string; error?: unknown }>>(
+		"/submissions/batch?base64_encoded=true",
+		{
+			method: "POST",
+			body: JSON.stringify({ submissions: runs.map(toSubmission) }),
+		},
+	);
 	const tokens = r.map((x) => x.token);
-	if (tokens.some((t) => !t)) throw new ExecutorUnavailableError("Code execution service rejected part of the batch.");
+	if (tokens.some((t) => !t))
+		throw new ExecutorUnavailableError("Code execution service rejected part of the batch.");
 	return tokens as string[];
 }
 
@@ -143,14 +167,21 @@ interface RawResult {
 }
 
 /** Maps Judge0 status IDs to our verdicts. Python syntax errors count as compile errors. */
-export function classify(statusId: number, stderr: string, memoryKb: number | null, memoryLimitKb: number, language: CodeLanguage): Verdict | null {
+export function classify(
+	statusId: number,
+	stderr: string,
+	memoryKb: number | null,
+	memoryLimitKb: number,
+	language: CodeLanguage,
+): Verdict | null {
 	if (statusId === 1 || statusId === 2) return null;
 	if (statusId === 3 || statusId === 4) return "accepted";
 	if (statusId === 5) return "time_limit";
 	if (statusId === 6) return "compilation_error";
 	if (statusId === 13 || statusId === 14) return "infra_error";
 	if (statusId >= 7 && statusId <= 12) {
-		if (language === "python" && /\b(SyntaxError|IndentationError|TabError)\b/.test(stderr)) return "compilation_error";
+		if (language === "python" && /\b(SyntaxError|IndentationError|TabError)\b/.test(stderr))
+			return "compilation_error";
 		if (memoryKb != null && memoryKb >= memoryLimitKb * 0.95) return "memory_limit";
 		if (/OutOfMemoryError|MemoryError|std::bad_alloc/.test(stderr)) return "memory_limit";
 		return "runtime_error";
@@ -158,11 +189,16 @@ export function classify(statusId: number, stderr: string, memoryKb: number | nu
 	return "infra_error";
 }
 
-export function normalizeResult(raw: RawResult, language: CodeLanguage, memoryLimitMb: number): RunResult {
+export function normalizeResult(
+	raw: RawResult,
+	language: CodeLanguage,
+	memoryLimitMb: number,
+): RunResult {
 	const statusId = raw.status?.id ?? 13;
 	const stderr = clip(unb64(raw.stderr));
 	const memoryKb = raw.memory ?? null;
-	const memLimitKb = Math.min(512, Math.max(LANGUAGE_SPECS[language].minMemoryMb, memoryLimitMb)) * 1024;
+	const memLimitKb =
+		Math.min(512, Math.max(LANGUAGE_SPECS[language].minMemoryMb, memoryLimitMb)) * 1024;
 	const verdict = classify(statusId, stderr, memoryKb, memLimitKb, language);
 	return {
 		token: raw.token,
@@ -201,7 +237,13 @@ export async function runAndWait(runs: RunRequest[], maxWaitMs = 90000): Promise
 		delay = Math.min(2000, Math.round(delay * 1.4));
 		const raw = await fetchRuns(tokens);
 		const byToken = new Map(raw.map((x) => [x.token, x]));
-		const results = tokens.map((t, i) => normalizeResult(byToken.get(t) ?? { token: t, status: { id: 1, description: "In Queue" } }, runs[i]!.language, runs[i]!.memoryLimitMb));
+		const results = tokens.map((t, i) =>
+			normalizeResult(
+				byToken.get(t) ?? { token: t, status: { id: 1, description: "In Queue" } },
+				runs[i]!.language,
+				runs[i]!.memoryLimitMb,
+			),
+		);
 		if (results.every((r) => r.done)) return results;
 	}
 	throw new ExecutorUnavailableError("Code execution timed out waiting for the sandbox queue.");
@@ -234,7 +276,13 @@ export async function executorHealth(force = false): Promise<ExecutorHealth> {
 			error: missing.length ? `Not installed on this machine: ${missing.join(", ")}` : null,
 		};
 	} else if (!executorConfigured()) {
-		value = { configured: false, reachable: false, version: null, languages: none, error: "JUDGE0_URL is not set." };
+		value = {
+			configured: false,
+			reachable: false,
+			version: null,
+			languages: none,
+			error: "JUDGE0_URL is not set.",
+		};
 	} else {
 		try {
 			const [about, langs] = await Promise.all([
@@ -255,7 +303,13 @@ export async function executorHealth(force = false): Promise<ExecutorHealth> {
 				error: null,
 			};
 		} catch (err) {
-			value = { configured: true, reachable: false, version: null, languages: none, error: (err as Error).message };
+			value = {
+				configured: true,
+				reachable: false,
+				version: null,
+				languages: none,
+				error: (err as Error).message,
+			};
 		}
 	}
 	healthCache = { at: Date.now(), value };

@@ -78,7 +78,7 @@ export function runFaceAgent(
 	const deviationSec = Number((temporal.sustainedLookingAwayMs / 1000).toFixed(1));
 
 	// Fleeting glances (< 2.5s) are normal human behavior during exams; sustained (> 3.5s) triggers alert
-	if (pose && pose.isLookingAway && temporal.sustainedLookingAwayMs >= 3500) {
+	if (pose?.isLookingAway && temporal.sustainedLookingAwayMs >= 3500) {
 		return {
 			status: "ATTENTION_DIVERTED",
 			gazeDirection: pose.gazeDirection,

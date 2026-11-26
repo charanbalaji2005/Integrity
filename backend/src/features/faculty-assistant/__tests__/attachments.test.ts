@@ -45,8 +45,12 @@ const slide = (...paras: string[]) =>
 
 describe("readZipEntries", () => {
 	it("reads deflated and stored entries, filtered by name", () => {
-		expect(readZipEntries(zip({ "a.xml": "deflated", "b.bin": "skip" }), (n) => n.endsWith(".xml"))).toEqual({ "a.xml": "deflated" });
-		expect(readZipEntries(zip({ "s.txt": "stored" }, true), () => true)).toEqual({ "s.txt": "stored" });
+		expect(
+			readZipEntries(zip({ "a.xml": "deflated", "b.bin": "skip" }), (n) => n.endsWith(".xml")),
+		).toEqual({ "a.xml": "deflated" });
+		expect(readZipEntries(zip({ "s.txt": "stored" }, true), () => true)).toEqual({
+			"s.txt": "stored",
+		});
 	});
 
 	it("caps decompressed size (zip bomb)", () => {
@@ -72,6 +76,8 @@ describe("extractPptxText", () => {
 	});
 
 	it("rejects files that are not zip archives", () => {
-		expect(() => extractPptxText(Buffer.from("not a zip at all, definitely not"))).toThrow(/could not be opened/);
+		expect(() => extractPptxText(Buffer.from("not a zip at all, definitely not"))).toThrow(
+			/could not be opened/,
+		);
 	});
 });

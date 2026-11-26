@@ -35,7 +35,9 @@ interface VisionVerdict {
 	summary: string;
 }
 
-const PROMPT = (events: string[]) => `You are an impartial exam-proctoring evidence reviewer looking at ONE webcam frame from an online exam.
+const PROMPT = (
+	events: string[],
+) => `You are an impartial exam-proctoring evidence reviewer looking at ONE webcam frame from an online exam.
 The automated detectors raised: ${events.join(", ")}.
 Describe only what is actually visible. Do not guess identity, ethnicity, age or emotions.
 Prohibited items: phone, second screen/laptop/tablet, books or notes, earphones/headphones, smartwatch, another person.
@@ -43,7 +45,11 @@ Answer ONLY with JSON:
 {"people_count": number, "candidate_present": boolean, "prohibited_items": string[], "looking_away": boolean,
  "confirms_alert": "yes" | "no" | "unclear", "summary": "<one neutral sentence, max 30 words>"}`;
 
-export function shouldReviewFrame(attemptId: string, eventTypes: string[], hasFrame: boolean): boolean {
+export function shouldReviewFrame(
+	attemptId: string,
+	eventTypes: string[],
+	hasFrame: boolean,
+): boolean {
 	if (!hasFrame || !env.GROQ_VISION_PROCTORING || !groqConfigured()) return false;
 	if (!eventTypes.some((t) => VISUAL_EVENTS.has(t))) return false;
 	if (inFlight.has(attemptId)) return false;
@@ -68,27 +74,40 @@ export async function reviewFlaggedFrame(params: {
 		const verdict = await groqVisionJson<VisionVerdict>(PROMPT(events), frame);
 		if (!verdict) return;
 
-		const items = Array.isArray(verdict.prohibited_items) ? verdict.prohibited_items.slice(0, 6) : [];
-		const confirms = ["yes", "no", "unclear"].includes(verdict.confirms_alert) ? verdict.confirms_alert : "unclear";
+		const items = Array.isArray(verdict.prohibited_items)
+			? verdict.prohibited_items.slice(0, 6)
+			: [];
+		const confirms = ["yes", "no", "unclear"].includes(verdict.confirms_alert)
+			? verdict.confirms_alert
+			: "unclear";
 		const details = `${String(verdict.summary ?? "").slice(0, 300)} [model: ${GROQ_MODELS.vision}; alert ${
-			confirms === "yes" ? "confirmed" : confirms === "no" ? "NOT confirmed — possible false positive" : "unclear"
+			confirms === "yes"
+				? "confirmed"
+				: confirms === "no"
+					? "NOT confirmed — possible false positive"
+					: "unclear"
 		}; people: ${Number(verdict.people_count) || 0}${items.length ? `; items: ${items.join(", ")}` : ""}; triggered by ${events.join(", ")}]`;
 
 		await prisma.proctoringTimelineEvent.create({
 			data: { attemptId, event: "AI VISION REVIEW", details },
 		});
 
-		emitToAssessmentMonitors(params.assessmentId, params.section ?? undefined, "proctor-vision-review", {
-			attemptId,
-			events,
-			confirms,
-			peopleCount: Number(verdict.people_count) || 0,
-			prohibitedItems: items,
-			candidatePresent: Boolean(verdict.candidate_present),
-			summary: verdict.summary,
-			model: GROQ_MODELS.vision,
-			at: new Date().toISOString(),
-		});
+		emitToAssessmentMonitors(
+			params.assessmentId,
+			params.section ?? undefined,
+			"proctor-vision-review",
+			{
+				attemptId,
+				events,
+				confirms,
+				peopleCount: Number(verdict.people_count) || 0,
+				prohibitedItems: items,
+				candidatePresent: Boolean(verdict.candidate_present),
+				summary: verdict.summary,
+				model: GROQ_MODELS.vision,
+				at: new Date().toISOString(),
+			},
+		);
 	} catch (err) {
 		console.warn("[VisionReview] failed:", err instanceof Error ? err.message : err);
 	} finally {

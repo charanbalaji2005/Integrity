@@ -6,6 +6,7 @@ import { attemptSectionWhere } from "@/utils/faculty-sections";
 import { parseRegistrationNumber } from "@/utils/registration-number";
 import { sendSuccess } from "@/utils/response";
 import { emitToUser, getIO } from "../../../providers/socket";
+import { finalizeCodingForAttempt } from "../../coding/services/workspace-service";
 import {
 	applyBuilderPayload,
 	assessmentScalarData,
@@ -19,7 +20,6 @@ import {
 import { orchestrateEvaluation } from "../services/evaluation-engine";
 import { facultyToNotify, getAssessmentResults } from "../services/results-service";
 import { getEmbedding } from "../services/vector-service";
-import { finalizeCodingForAttempt } from "../../coding/services/workspace-service";
 
 /**
  * Express v5 parameter helpers to avoid string/string[] type mismatch
@@ -590,7 +590,6 @@ export async function submitAttempt(req: Request, res: Response): Promise<void> 
 
 	let totalScore = 0;
 	let maxScore = 0;
-	const hasLowConfidence = false;
 
 	// Process each answer
 	if (answers && Array.isArray(answers) && attempt.assessment?.questions) {
@@ -655,7 +654,9 @@ export async function submitAttempt(req: Request, res: Response): Promise<void> 
 	// sandboxed test execution + Vigil evaluation (marks land on the Answer later).
 	try {
 		const typed: Record<string, string> = {};
-		if (Array.isArray(answers)) for (const a of answers) if (a?.questionId && typeof a.response === "string") typed[a.questionId] = a.response;
+		if (Array.isArray(answers))
+			for (const a of answers)
+				if (a?.questionId && typeof a.response === "string") typed[a.questionId] = a.response;
 		await finalizeCodingForAttempt(attemptId, typed);
 	} catch (err) {
 		console.error("[submit] Coding finalisation failed:", err);
@@ -1027,7 +1028,7 @@ export async function evaluateAttempt(req: Request, res: Response): Promise<void
 					const evalObj = JSON.parse(ans.aiEvaluation);
 					similarityResults = JSON.stringify(evalObj.reasoning || {});
 					riskAnalysisResults = JSON.stringify(evalObj.risk || {});
-				} catch (e) {}
+				} catch {}
 			}
 
 			// Add to IMMUTABLE audit trail

@@ -40,7 +40,10 @@ export async function submitDocumentHandler(req: Request, res: Response): Promis
 	const user = getAuthUser(req);
 	const parsed = submitSchema.safeParse(req.body);
 	if (!parsed.success) {
-		throw new AppError("Choose College ID Card or Institution Fee Receipt.", HTTP_STATUS.BAD_REQUEST);
+		throw new AppError(
+			"Choose College ID Card or Institution Fee Receipt.",
+			HTTP_STATUS.BAD_REQUEST,
+		);
 	}
 	const file = req.file;
 	if (!file) throw new AppError("Attach your document.", HTTP_STATUS.BAD_REQUEST);

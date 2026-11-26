@@ -23,7 +23,9 @@ export const SEND_WINDOW_MS = 15 * 60 * 1000;
 export const MAX_SENDS_PER_WINDOW = 5;
 
 export function hashCode(userId: string, purpose: string, code: string): string {
-	return createHmac("sha256", env.BETTER_AUTH_SECRET).update(`${userId}:${purpose}:${code}`).digest("hex");
+	return createHmac("sha256", env.BETTER_AUTH_SECRET)
+		.update(`${userId}:${purpose}:${code}`)
+		.digest("hex");
 }
 
 function sameHash(a: string, b: string) {
@@ -41,8 +43,14 @@ export function maskEmail(email: string): string {
 
 const PURPOSE_TEXT: Record<TwoFactorPurpose, { subject: string; line: string }> = {
 	login: { subject: "Your IntegrityOS sign-in code", line: "Use this code to finish signing in:" },
-	enable: { subject: "Confirm turning on two-step verification", line: "Use this code to turn on two-step verification:" },
-	disable: { subject: "Confirm turning off two-step verification", line: "Use this code to turn off two-step verification:" },
+	enable: {
+		subject: "Confirm turning on two-step verification",
+		line: "Use this code to turn on two-step verification:",
+	},
+	disable: {
+		subject: "Confirm turning off two-step verification",
+		line: "Use this code to turn off two-step verification:",
+	},
 };
 
 function emailHtml(code: string, purpose: TwoFactorPurpose, ip?: string | null) {
@@ -56,17 +64,32 @@ function emailHtml(code: string, purpose: TwoFactorPurpose, ip?: string | null) 
 }
 
 /** Creates (or replaces) a code and emails it. Enforces a resend cooldown and a per-window cap. */
-export async function issueCode(args: { userId: string; email: string; purpose: TwoFactorPurpose; sessionKey?: string; ip?: string | null }) {
+export async function issueCode(args: {
+	userId: string;
+	email: string;
+	purpose: TwoFactorPurpose;
+	sessionKey?: string;
+	ip?: string | null;
+}) {
 	const sessionKey = args.sessionKey ?? "";
-	const key = { userId_purpose_sessionKey: { userId: args.userId, purpose: args.purpose, sessionKey } };
+	const key = {
+		userId_purpose_sessionKey: { userId: args.userId, purpose: args.purpose, sessionKey },
+	};
 	const existing = await prisma.twoFactorCode.findUnique({ where: key });
 	const now = Date.now();
 	if (existing) {
 		const wait = existing.sentAt.getTime() + RESEND_COOLDOWN_MS - now;
-		if (wait > 0) throw new AppError(`Please wait ${Math.ceil(wait / 1000)} s before requesting another code.`, HTTP_STATUS.TOO_MANY_REQUESTS);
+		if (wait > 0)
+			throw new AppError(
+				`Please wait ${Math.ceil(wait / 1000)} s before requesting another code.`,
+				HTTP_STATUS.TOO_MANY_REQUESTS,
+			);
 		const inWindow = now - existing.windowStart.getTime() < SEND_WINDOW_MS;
 		if (inWindow && existing.sendCount >= MAX_SENDS_PER_WINDOW) {
-			throw new AppError("Too many codes requested. Try again in 15 minutes.", HTTP_STATUS.TOO_MANY_REQUESTS);
+			throw new AppError(
+				"Too many codes requested. Try again in 15 minutes.",
+				HTTP_STATUS.TOO_MANY_REQUESTS,
+			);
 		}
 	}
 	const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
@@ -81,19 +104,40 @@ export async function issueCode(args: { userId: string; email: string; purpose: 
 			expiresAt,
 			attempts: 0,
 			sentAt: new Date(now),
-			...(resetWindow ? { windowStart: new Date(now), sendCount: 1 } : { sendCount: { increment: 1 } }),
+			...(resetWindow
+				? { windowStart: new Date(now), sendCount: 1 }
+				: { sendCount: { increment: 1 } }),
 		},
 	});
-	await sendEmail({ to: args.email, subject: PURPOSE_TEXT[args.purpose].subject, html: emailHtml(code, args.purpose, args.ip) });
-	return { maskedEmail: maskEmail(args.email), expiresInSeconds: CODE_TTL_MS / 1000, resendInSeconds: RESEND_COOLDOWN_MS / 1000 };
+	await sendEmail({
+		to: args.email,
+		subject: PURPOSE_TEXT[args.purpose].subject,
+		html: emailHtml(code, args.purpose, args.ip),
+	});
+	return {
+		maskedEmail: maskEmail(args.email),
+		expiresInSeconds: CODE_TTL_MS / 1000,
+		resendInSeconds: RESEND_COOLDOWN_MS / 1000,
+	};
 }
 
 export type VerifyResult = "ok" | "invalid" | "locked_out";
 
 /** Checks a code. Wrong codes count attempts; the 5th wrong attempt burns the code. */
-export async function checkCode(args: { userId: string; purpose: TwoFactorPurpose; sessionKey?: string; code: unknown }): Promise<VerifyResult> {
+export async function checkCode(args: {
+	userId: string;
+	purpose: TwoFactorPurpose;
+	sessionKey?: string;
+	code: unknown;
+}): Promise<VerifyResult> {
 	const code = String(args.code ?? "").replace(/\s+/g, "");
-	const key = { userId_purpose_sessionKey: { userId: args.userId, purpose: args.purpose, sessionKey: args.sessionKey ?? "" } };
+	const key = {
+		userId_purpose_sessionKey: {
+			userId: args.userId,
+			purpose: args.purpose,
+			sessionKey: args.sessionKey ?? "",
+		},
+	};
 	const row = await prisma.twoFactorCode.findUnique({ where: key });
 	if (!row || row.expiresAt.getTime() <= Date.now()) {
 		if (row) await prisma.twoFactorCode.delete({ where: { id: row.id } }).catch(() => {});
@@ -104,7 +148,10 @@ export async function checkCode(args: { userId: string; purpose: TwoFactorPurpos
 		return "ok";
 	}
 	// Atomic increment so parallel guesses can't exceed the limit.
-	const updated = await prisma.twoFactorCode.update({ where: { id: row.id }, data: { attempts: { increment: 1 } } });
+	const updated = await prisma.twoFactorCode.update({
+		where: { id: row.id },
+		data: { attempts: { increment: 1 } },
+	});
 	if (updated.attempts >= MAX_ATTEMPTS) {
 		await prisma.twoFactorCode.delete({ where: { id: row.id } }).catch(() => {});
 		return "locked_out";
@@ -116,8 +163,14 @@ export function attemptsLeftMessage(remaining: number) {
 	return `Incorrect code. ${remaining} attempt${remaining === 1 ? "" : "s"} left.`;
 }
 
-export async function attemptsRemaining(userId: string, purpose: TwoFactorPurpose, sessionKey = "") {
-	const row = await prisma.twoFactorCode.findUnique({ where: { userId_purpose_sessionKey: { userId, purpose, sessionKey } } });
+export async function attemptsRemaining(
+	userId: string,
+	purpose: TwoFactorPurpose,
+	sessionKey = "",
+) {
+	const row = await prisma.twoFactorCode.findUnique({
+		where: { userId_purpose_sessionKey: { userId, purpose, sessionKey } },
+	});
 	return row ? Math.max(0, MAX_ATTEMPTS - row.attempts) : 0;
 }
 

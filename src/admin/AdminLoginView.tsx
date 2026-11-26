@@ -53,6 +53,16 @@ export function AdminLoginView({
         localStorage.setItem("auth_token", data.data.session.token);
       }
 
+      if (data.data.twoFactor?.required) {
+        // The app-level overlay asks for the emailed code, then restores the session.
+        window.dispatchEvent(
+          new CustomEvent("two-factor-required", {
+            detail: { maskedEmail: data.data.twoFactor.maskedEmail, codeSent: true },
+          }),
+        );
+        return;
+      }
+
       toast.success("Successfully authenticated to Admin Portal!");
       handleLoginSuccess(data.data.user, data.data.session);
     } catch (err: any) {

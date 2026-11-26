@@ -2,9 +2,9 @@ import type { Request, Response } from "express";
 import { HTTP_STATUS } from "../../../constants/http-status";
 import { prisma } from "../../../database";
 import { isAuthorizedInstitutionalEmail } from "../../../providers/auth";
+import { getIO } from "../../../providers/socket";
 import { sendEmail } from "../../../services/mail";
 import { AppError } from "../../../utils/app-error";
-import { getIO } from "../../../providers/socket";
 import { sendSuccess } from "../../../utils/response";
 import { ticketRoom, userRoom } from "../services/infra";
 import { messageToDto } from "../services/serializers";
@@ -15,13 +15,6 @@ function getParamString(param: any): string {
 		return String(param[0] || "");
 	}
 	return String(param || "");
-}
-
-function getHeaderString(header: any): string {
-	if (Array.isArray(header)) {
-		return String(header[0] || "");
-	}
-	return String(header || "");
 }
 
 /**
@@ -38,7 +31,10 @@ function getAuthUser(req: Request) {
 async function checkSupportOrAdmin(userId: string) {
 	const user = await prisma.user.findUnique({ where: { id: userId } });
 	if (!user || (user.role !== "support" && user.role !== "admin")) {
-		throw new AppError("Forbidden: Support representative or administrator privileges required.", HTTP_STATUS.FORBIDDEN);
+		throw new AppError(
+			"Forbidden: Support representative or administrator privileges required.",
+			HTTP_STATUS.FORBIDDEN,
+		);
 	}
 	return user;
 }
@@ -78,7 +74,8 @@ export async function postMessage(req: Request, res: Response): Promise<void> {
 	const user = getAuthUser(req);
 	await checkSupportOrAdmin(user.id);
 
-	const content = typeof req.body?.content === "string" ? req.body.content.trim().slice(0, 5000) : "";
+	const content =
+		typeof req.body?.content === "string" ? req.body.content.trim().slice(0, 5000) : "";
 	if (!content) {
 		throw new AppError("Message content is required", HTTP_STATUS.BAD_REQUEST);
 	}
@@ -113,7 +110,10 @@ export async function postMessage(req: Request, res: Response): Promise<void> {
 	getIO()
 		?.to(ticketRoom(ticketId))
 		.emit("chat:message", { ticketId, message: messageToDto({ ...msg, attachments: [] }) });
-	getIO()?.to(ticketRoom(ticketId)).to(userRoom(ticket.studentId)).emit("ticket:updated", { ticketId });
+	getIO()
+		?.to(ticketRoom(ticketId))
+		.to(userRoom(ticket.studentId))
+		.emit("ticket:updated", { ticketId });
 
 	sendSuccess(res, msg, "Message posted successfully", HTTP_STATUS.CREATED);
 }

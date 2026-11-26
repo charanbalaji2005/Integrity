@@ -71,22 +71,22 @@ async function callLLM(prompt: string, jsonMode = false): Promise<string> {
 function extractJSON(text: string): any {
 	try {
 		return JSON.parse(text);
-	} catch (err) {
+	} catch {
 		const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-		if (match && match[1]) {
+		if (match?.[1]) {
 			try {
 				return JSON.parse(match[1]);
-			} catch (err2) {}
+			} catch {}
 		}
 		const firstBrace = text.indexOf("{");
 		const lastBrace = text.lastIndexOf("}");
 		if (firstBrace !== -1 && lastBrace !== -1) {
 			try {
 				return JSON.parse(text.substring(firstBrace, lastBrace + 1));
-			} catch (e) {}
+			} catch {}
 		}
 	}
-	throw new Error("Could not extract JSON from text: " + text.slice(0, 100));
+	throw new Error(`Could not extract JSON from text: ${text.slice(0, 100)}`);
 }
 
 /**
@@ -111,7 +111,6 @@ export async function runPlagiarismAgent(
 	});
 
 	let maxSimilarity = 0;
-	let matchedSource = "Internal Database";
 	let matchedParagraph = "";
 
 	for (const other of otherAnswers) {
@@ -121,10 +120,9 @@ export async function runPlagiarismAgent(
 				const sim = calculateCosineSimilarity(currentEmb, otherEmb);
 				if (sim > maxSimilarity) {
 					maxSimilarity = sim;
-					matchedSource = `Student Attempt: ${other.attempt.studentName} (${other.attempt.id})`;
 					matchedParagraph = other.response;
 				}
-			} catch (e) {}
+			} catch {}
 		}
 	}
 
@@ -153,7 +151,7 @@ export async function runPlagiarismAgent(
 	try {
 		const raw = await callLLM(prompt, true);
 		return extractJSON(raw);
-	} catch (err) {
+	} catch {
 		return {
 			score: plagPercent,
 			confidence: 0.7,
@@ -194,7 +192,7 @@ export async function runAICotAgent(studentAnswer: string): Promise<AgentResult>
 	try {
 		const raw = await callLLM(prompt, true);
 		return extractJSON(raw);
-	} catch (err) {
+	} catch {
 		const words = studentAnswer.split(/\s+/).length;
 		return {
 			score: words > 10 ? 20 : 5,
@@ -241,7 +239,7 @@ export async function runSemanticSimilarityAgent(
 	try {
 		const raw = await callLLM(prompt, true);
 		return extractJSON(raw);
-	} catch (err) {
+	} catch {
 		return {
 			score: simScore,
 			confidence: 0.8,
@@ -278,7 +276,7 @@ export async function runWritingQualityAgent(studentAnswer: string): Promise<Age
 	try {
 		const raw = await callLLM(prompt, true);
 		return extractJSON(raw);
-	} catch (err) {
+	} catch {
 		return {
 			score: 85,
 			confidence: 0.6,
@@ -313,7 +311,7 @@ export async function runCitationAgent(studentAnswer: string): Promise<AgentResu
 	try {
 		const raw = await callLLM(prompt, true);
 		return extractJSON(raw);
-	} catch (err) {
+	} catch {
 		return {
 			score: 100,
 			confidence: 0.7,
@@ -361,7 +359,7 @@ export async function runRiskScoringAgent(
 	try {
 		const raw = await callLLM(prompt, true);
 		return extractJSON(raw);
-	} catch (err) {
+	} catch {
 		// Math fallback
 		let integrity = 100;
 		integrity -= plagScore * 0.8;
@@ -415,7 +413,7 @@ export async function runSummaryAgent(
 	try {
 		const raw = await callLLM(prompt, true);
 		return extractJSON(raw);
-	} catch (err) {
+	} catch {
 		return {
 			score: 100,
 			confidence: 0.9,
@@ -478,7 +476,7 @@ export async function runCompleteAIEvaluation(attemptId: string): Promise<void> 
 			let plagResult: AgentResult;
 			try {
 				plagResult = await runPlagiarismAgent(ans.response, question.id, attempt.id);
-			} catch (e) {
+			} catch {
 				plagResult = {
 					score: 0,
 					confidence: 0,
@@ -491,7 +489,7 @@ export async function runCompleteAIEvaluation(attemptId: string): Promise<void> 
 			let aiResult: AgentResult;
 			try {
 				aiResult = await runAICotAgent(ans.response);
-			} catch (e) {
+			} catch {
 				aiResult = {
 					score: 0,
 					confidence: 0,
@@ -508,7 +506,7 @@ export async function runCompleteAIEvaluation(attemptId: string): Promise<void> 
 					rubricFor(question),
 					ans.response,
 				);
-			} catch (e) {
+			} catch {
 				semanticResult = {
 					score: 50,
 					confidence: 0,
@@ -521,7 +519,7 @@ export async function runCompleteAIEvaluation(attemptId: string): Promise<void> 
 			let writingResult: AgentResult;
 			try {
 				writingResult = await runWritingQualityAgent(ans.response);
-			} catch (e) {
+			} catch {
 				writingResult = {
 					score: 80,
 					confidence: 0,
@@ -534,7 +532,7 @@ export async function runCompleteAIEvaluation(attemptId: string): Promise<void> 
 			let citationResult: AgentResult;
 			try {
 				citationResult = await runCitationAgent(ans.response);
-			} catch (e) {
+			} catch {
 				citationResult = {
 					score: 100,
 					confidence: 0,
@@ -615,7 +613,7 @@ export async function runCompleteAIEvaluation(attemptId: string): Promise<void> 
 			citationScore,
 			attempt.violations.length,
 		);
-	} catch (e) {
+	} catch {
 		riskResult = {
 			score: 90,
 			confidence: 0.8,
@@ -643,7 +641,7 @@ export async function runCompleteAIEvaluation(attemptId: string): Promise<void> 
 			subScores,
 			aggregatedEvidence.concat(attempt.violations.map((v) => `${v.type}: ${v.description}`)),
 		);
-	} catch (e) {
+	} catch {
 		summaryResult = {
 			score: 100,
 			confidence: 1,

@@ -21,9 +21,13 @@ export interface ChatUser {
 	institutionName?: string | null;
 }
 
-const norm = (s: string | null | undefined) => String(s ?? "").trim().toUpperCase();
+const norm = (s: string | null | undefined) =>
+	String(s ?? "")
+		.trim()
+		.toUpperCase();
 const DEFAULT_INSTITUTION = "SRM University AP";
-const institutionOf = (u: { institutionName?: string | null }) => u.institutionName || DEFAULT_INSTITUTION;
+const institutionOf = (u: { institutionName?: string | null }) =>
+	u.institutionName || DEFAULT_INSTITUTION;
 
 export async function canDirectMessage(a: ChatUser, bId: string): Promise<boolean> {
 	if (!bId || a.id === bId) return false;
@@ -56,7 +60,10 @@ export async function canDirectMessage(a: ChatUser, bId: string): Promise<boolea
 
 function requireStudent(user: ChatUser) {
 	if (user.role !== "user") {
-		throw new AppError("Friend requests are for students and their classmates.", HTTP_STATUS.FORBIDDEN);
+		throw new AppError(
+			"Friend requests are for students and their classmates.",
+			HTTP_STATUS.FORBIDDEN,
+		);
 	}
 }
 
@@ -81,7 +88,15 @@ export async function listClassmates(user: ChatUser) {
 	const [students, requests] = await Promise.all([
 		prisma.user.findMany({
 			where,
-			select: { id: true, name: true, email: true, rollNumber: true, section: true, department: true, image: true },
+			select: {
+				id: true,
+				name: true,
+				email: true,
+				rollNumber: true,
+				section: true,
+				department: true,
+				image: true,
+			},
 			orderBy: { name: "asc" },
 			take: 300,
 		}),
@@ -96,7 +111,8 @@ export async function listClassmates(user: ChatUser) {
 	const byOther = new Map<string, { id: string; status: FriendStatus }>();
 	for (const r of requests) {
 		const other = r.senderId === user.id ? r.receiverId : r.senderId;
-		const status: FriendStatus = r.status === "accepted" ? "friends" : r.senderId === user.id ? "outgoing" : "incoming";
+		const status: FriendStatus =
+			r.status === "accepted" ? "friends" : r.senderId === user.id ? "outgoing" : "incoming";
 		const prev = byOther.get(other);
 		if (!prev || status === "friends") byOther.set(other, { id: r.id, status });
 	}
@@ -112,7 +128,14 @@ export async function listClassmates(user: ChatUser) {
 
 export async function listFriendRequests(user: ChatUser) {
 	requireStudent(user);
-	const select = { id: true, name: true, email: true, rollNumber: true, section: true, department: true };
+	const select = {
+		id: true,
+		name: true,
+		email: true,
+		rollNumber: true,
+		section: true,
+		department: true,
+	};
 	const [incoming, outgoing] = await Promise.all([
 		prisma.friendRequest.findMany({
 			where: { receiverId: user.id, status: "pending" },
@@ -133,11 +156,34 @@ export async function listFriends(userId: string) {
 	const rows = await prisma.friendRequest.findMany({
 		where: { status: "accepted", OR: [{ senderId: userId }, { receiverId: userId }] },
 		include: {
-			sender: { select: { id: true, name: true, email: true, role: true, department: true, rollNumber: true, section: true } },
-			receiver: { select: { id: true, name: true, email: true, role: true, department: true, rollNumber: true, section: true } },
+			sender: {
+				select: {
+					id: true,
+					name: true,
+					email: true,
+					role: true,
+					department: true,
+					rollNumber: true,
+					section: true,
+				},
+			},
+			receiver: {
+				select: {
+					id: true,
+					name: true,
+					email: true,
+					role: true,
+					department: true,
+					rollNumber: true,
+					section: true,
+				},
+			},
 		},
 	});
-	return rows.map((r) => ({ ...(r.senderId === userId ? r.receiver : r.sender), relation: "friend" as const }));
+	return rows.map((r) => ({
+		...(r.senderId === userId ? r.receiver : r.sender),
+		relation: "friend" as const,
+	}));
 }
 
 function notifyRealtime(userId: string, event: string, payload: unknown) {
@@ -151,11 +197,20 @@ export async function sendFriendRequest(user: ChatUser, receiverId: string) {
 	}
 	const where = await classmateWhere(user);
 	if (!where) {
-		throw new AppError("Add your section to your profile to find classmates.", HTTP_STATUS.BAD_REQUEST);
+		throw new AppError(
+			"Add your section to your profile to find classmates.",
+			HTTP_STATUS.BAD_REQUEST,
+		);
 	}
-	const classmate = await prisma.user.findFirst({ where: { ...where, id: receiverId }, select: { id: true, name: true } });
+	const classmate = await prisma.user.findFirst({
+		where: { ...where, id: receiverId },
+		select: { id: true, name: true },
+	});
 	if (!classmate) {
-		throw new AppError("You can only send friend requests to classmates in your section.", HTTP_STATUS.FORBIDDEN);
+		throw new AppError(
+			"You can only send friend requests to classmates in your section.",
+			HTTP_STATUS.FORBIDDEN,
+		);
 	}
 
 	const existing = await prisma.friendRequest.findMany({
@@ -194,11 +249,19 @@ export async function sendFriendRequest(user: ChatUser, receiverId: string) {
 			senderRole: "student",
 		},
 	});
-	notifyRealtime(receiverId, "friend-request", { type: "received", requestId: request.id, from: { id: user.id, name: user.name } });
+	notifyRealtime(receiverId, "friend-request", {
+		type: "received",
+		requestId: request.id,
+		from: { id: user.id, name: user.name },
+	});
 	return { request, status: "outgoing" as FriendStatus };
 }
 
-export async function respondToFriendRequest(user: ChatUser, requestId: string, action: "accept" | "decline" | "cancel") {
+export async function respondToFriendRequest(
+	user: ChatUser,
+	requestId: string,
+	action: "accept" | "decline" | "cancel",
+) {
 	requireStudent(user);
 	const request = await prisma.friendRequest.findUnique({ where: { id: requestId } });
 	if (!request || (request.receiverId !== user.id && request.senderId !== user.id)) {
@@ -247,6 +310,7 @@ export async function removeFriend(user: ChatUser, otherId: string) {
 		},
 		data: { status: "cancelled" },
 	});
-	if (result.count === 0) throw new AppError("You are not friends with this student.", HTTP_STATUS.NOT_FOUND);
+	if (result.count === 0)
+		throw new AppError("You are not friends with this student.", HTTP_STATUS.NOT_FOUND);
 	notifyRealtime(otherId, "friend-request", { type: "removed" });
 }

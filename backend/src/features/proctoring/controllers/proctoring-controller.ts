@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
+import { errorMessage } from "@/utils/error-message";
 import { HTTP_STATUS } from "../../../constants/http-status";
 import { getAuthUser } from "../../../middleware/auth-middleware";
 import { AppError } from "../../../utils/app-error";
@@ -28,9 +29,9 @@ export async function faceCheck(req: Request, res: Response): Promise<void> {
 	try {
 		const result = await verifyFace(selfie, idPhoto, userId);
 		sendSuccess(res, result, "Face check completed successfully.", HTTP_STATUS.OK);
-	} catch (err: any) {
+	} catch (err) {
 		throw new AppError(
-			err.message || "Face detection engine error.",
+			errorMessage(err, "Face detection engine error."),
 			HTTP_STATUS.INTERNAL_SERVER_ERROR,
 		);
 	}

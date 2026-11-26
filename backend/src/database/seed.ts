@@ -104,7 +104,9 @@ async function upsertAccount(acc: SeedAccount) {
 	// The seeded demo student is pre-approved so the demo exam works out of the box.
 	// Newly registered students must upload a college ID / fee receipt for admin approval.
 	const verification =
-		acc.role === "user" || acc.preApproved ? { verificationStatus: "approved", verifiedAt: new Date() } : {};
+		acc.role === "user" || acc.preApproved
+			? { verificationStatus: "approved", verifiedAt: new Date() }
+			: {};
 
 	const user = await prisma.user.upsert({
 		where: { email: acc.email },
@@ -274,7 +276,8 @@ export async function seedDatabase(shouldExit = false) {
 }
 
 // Only run automatically when executed directly (e.g. npm run seed)
-const isDirectExecution = process.argv[1] && (process.argv[1].endsWith("seed.ts") || process.argv[1].endsWith("seed.js"));
+const isDirectExecution =
+	process.argv[1] && (process.argv[1].endsWith("seed.ts") || process.argv[1].endsWith("seed.js"));
 if (isDirectExecution) {
 	seedDatabase(true);
 }

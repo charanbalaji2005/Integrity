@@ -106,7 +106,10 @@ export function isCodeLanguage(v: unknown): v is CodeLanguage {
 }
 
 /** Languages a question allows: faculty choice, else all four with the faculty language first. */
-export function allowedLanguagesFor(config: { language?: string; allowedLanguages?: string[] }): CodeLanguage[] {
+export function allowedLanguagesFor(config: {
+	language?: string;
+	allowedLanguages?: string[];
+}): CodeLanguage[] {
 	const chosen = (config.allowedLanguages ?? []).filter(isCodeLanguage);
 	const list = chosen.length ? chosen : [...CODE_LANGUAGES];
 	const primary = isCodeLanguage(config.language) ? config.language : null;

@@ -47,7 +47,10 @@ export const questionConfigSchema = z
 		timeLimitMs: z.number().int().min(100).max(60000).optional(),
 		memoryLimitMb: z.number().int().min(16).max(4096).optional(),
 		/** Languages students may choose (c | cpp | java | python). Empty → all four. */
-		allowedLanguages: z.array(z.enum(["c", "cpp", "java", "python"])).max(4).optional(),
+		allowedLanguages: z
+			.array(z.enum(["c", "cpp", "java", "python"]))
+			.max(4)
+			.optional(),
 		/** Share of the marks decided by test cases (rest: AI-scored rubric). */
 		testWeightPercent: z.number().min(0).max(100).optional(),
 		rubric: z

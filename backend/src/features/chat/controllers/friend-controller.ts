@@ -12,7 +12,8 @@ import {
 	sendFriendRequest,
 } from "../services/relationships";
 
-const param = (req: Request, k: string) => String(Array.isArray(req.params[k]) ? req.params[k][0] : (req.params[k] ?? ""));
+const param = (req: Request, k: string) =>
+	String(Array.isArray(req.params[k]) ? req.params[k][0] : (req.params[k] ?? ""));
 
 /** GET /api/chat/classmates — students in my section with our friendship status. */
 export async function getClassmates(req: Request, res: Response): Promise<void> {
@@ -31,7 +32,12 @@ export async function postFriendRequest(req: Request, res: Response): Promise<vo
 	const parsed = sendSchema.safeParse(req.body);
 	if (!parsed.success) throw new AppError("Choose a classmate.", HTTP_STATUS.BAD_REQUEST);
 	const result = await sendFriendRequest(getAuthUser(req), parsed.data.receiverId);
-	sendSuccess(res, result, result.status === "friends" ? "You are now friends" : "Friend request sent", HTTP_STATUS.CREATED);
+	sendSuccess(
+		res,
+		result,
+		result.status === "friends" ? "You are now friends" : "Friend request sent",
+		HTTP_STATUS.CREATED,
+	);
 }
 
 const actionSchema = z.object({ action: z.enum(["accept", "decline", "cancel"]) });
@@ -40,8 +46,16 @@ const actionSchema = z.object({ action: z.enum(["accept", "decline", "cancel"]) 
 export async function friendRequestAction(req: Request, res: Response): Promise<void> {
 	const parsed = actionSchema.safeParse(req.body);
 	if (!parsed.success) throw new AppError("Invalid action.", HTTP_STATUS.BAD_REQUEST);
-	const result = await respondToFriendRequest(getAuthUser(req), param(req, "id"), parsed.data.action);
-	sendSuccess(res, result, `Request ${parsed.data.action === "accept" ? "accepted" : parsed.data.action === "decline" ? "declined" : "cancelled"}`);
+	const result = await respondToFriendRequest(
+		getAuthUser(req),
+		param(req, "id"),
+		parsed.data.action,
+	);
+	sendSuccess(
+		res,
+		result,
+		`Request ${parsed.data.action === "accept" ? "accepted" : parsed.data.action === "decline" ? "declined" : "cancelled"}`,
+	);
 }
 
 /** DELETE /api/chat/friends/:userId */

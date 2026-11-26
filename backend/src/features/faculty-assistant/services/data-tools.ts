@@ -1,7 +1,7 @@
 import { prisma } from "@/database";
 import { attemptSectionWhere } from "@/utils/faculty-sections";
-import { extractText } from "../../text-extraction/services/text-extraction-service";
 import { collectPublishIssues } from "../../assessments/services/assessment-builder-service";
+import { extractText } from "../../text-extraction/services/text-extraction-service";
 
 /**
  * Authorized data access for Vigil's agents.
@@ -22,7 +22,12 @@ const clip = (s: string | null | undefined, n: number) => {
 	const t = (s ?? "").replace(/\s+/g, " ").trim();
 	return t.length > n ? `${t.slice(0, n)}…` : t;
 };
-const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+const norm = (s: string) =>
+	s
+		.toLowerCase()
+		.replace(/[^a-z0-9 ]+/g, " ")
+		.replace(/\s+/g, " ")
+		.trim();
 
 /* ───────────────────────── assessments ───────────────────────── */
 
@@ -61,9 +66,17 @@ export async function listOwnAssessments(user: ToolUser) {
  * Picks the assessment a request refers to: the pinned one, else the best title
  * match, else (when the request clearly needs one) the most recently updated.
  */
-export async function resolveAssessment(user: ToolUser, ref: string | null, pinnedId: string | null, fallbackLatest: boolean) {
+export async function resolveAssessment(
+	user: ToolUser,
+	ref: string | null,
+	pinnedId: string | null,
+	fallbackLatest: boolean,
+) {
 	if (pinnedId) {
-		const pinned = await prisma.assessment.findFirst({ where: { id: pinnedId, facultyId: user.id }, select: { id: true, title: true } });
+		const pinned = await prisma.assessment.findFirst({
+			where: { id: pinnedId, facultyId: user.id },
+			select: { id: true, title: true },
+		});
 		if (pinned) return pinned;
 	}
 	const all = await prisma.assessment.findMany({
@@ -73,7 +86,9 @@ export async function resolveAssessment(user: ToolUser, ref: string | null, pinn
 		take: 200,
 	});
 	if (ref?.trim()) {
-		const want = norm(ref).split(" ").filter((w) => w.length > 1);
+		const want = norm(ref)
+			.split(" ")
+			.filter((w) => w.length > 1);
 		let best: { id: string; title: string } | null = null;
 		let bestScore = 0;
 		for (const a of all) {
@@ -93,7 +108,12 @@ export async function examOverview(assessmentId: string) {
 	const a = await prisma.assessment.findUnique({
 		where: { id: assessmentId },
 		include: {
-			questions: { orderBy: { order: "asc" }, include: { topic: { select: { title: true, unit: { select: { number: true, title: true } } } } } },
+			questions: {
+				orderBy: { order: "asc" },
+				include: {
+					topic: { select: { title: true, unit: { select: { number: true, title: true } } } },
+				},
+			},
 			course: { select: { code: true, name: true } },
 			topics: { include: { topic: { select: { title: true } } } },
 			materials: { include: { material: { select: { title: true, kind: true } } } },
@@ -126,9 +146,17 @@ export async function examOverview(assessmentId: string) {
 			tabSwitchDetection: a.tabSwitchDetection,
 			behaviourAnalysis: a.behavioralAnalysis,
 		},
-		resume: { allowed: a.allowResume, maxResumes: a.maxResumeCount, graceMinutes: a.resumeTimeWindow, autoSubmit: a.autoSubmitOnExpiry },
+		resume: {
+			allowed: a.allowResume,
+			maxResumes: a.maxResumeCount,
+			graceMinutes: a.resumeTimeWindow,
+			autoSubmit: a.autoSubmitOnExpiry,
+		},
 		syllabusTopicsCovered: a.topics.map((t) => t.topic.title),
-		materials: a.materials.map((m) => `${m.material.title} (${m.material.kind}${m.permittedInExam ? ", permitted in exam" : ""})`),
+		materials: a.materials.map(
+			(m) =>
+				`${m.material.title} (${m.material.kind}${m.permittedInExam ? ", permitted in exam" : ""})`,
+		),
 		attempts: a._count.attempts,
 		publishBlockers: issues.map((i) => i.message),
 		questions: a.questions.map((q, i) => ({
@@ -150,7 +178,12 @@ export async function examOverview(assessmentId: string) {
 export async function performance(user: ToolUser, assessmentId: string) {
 	const a = await prisma.assessment.findUnique({
 		where: { id: assessmentId },
-		select: { title: true, passingMarks: true, totalMarks: true, questions: { orderBy: { order: "asc" }, include: { topic: { select: { title: true } } } } },
+		select: {
+			title: true,
+			passingMarks: true,
+			totalMarks: true,
+			questions: { orderBy: { order: "asc" }, include: { topic: { select: { title: true } } } },
+		},
 	});
 	if (!a) return null;
 	const attempts = await prisma.assessmentAttempt.findMany({
@@ -172,7 +205,11 @@ export async function performance(user: ToolUser, assessmentId: string) {
 	});
 	const sorted = [...scores].sort((x, y) => x - y);
 	const mean = scores.length ? scores.reduce((s, x) => s + x, 0) / scores.length : 0;
-	const median = sorted.length ? (sorted.length % 2 ? sorted[(sorted.length - 1) / 2] : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2) : 0;
+	const median = sorted.length
+		? sorted.length % 2
+			? sorted[(sorted.length - 1) / 2]
+			: (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+		: 0;
 	const buckets = ["0-39%", "40-59%", "60-74%", "75-89%", "90-100%"];
 	const dist = [0, 0, 0, 0, 0];
 	for (const s of scores) {
@@ -183,7 +220,9 @@ export async function performance(user: ToolUser, assessmentId: string) {
 	const perQuestion = a.questions.map((q, i) => {
 		const ans = attempts.flatMap((t) => t.answers.filter((x) => x.questionId === q.id));
 		const graded = ans.filter((x) => (x.manualGrade ?? x.aiGrade) != null);
-		const avg = graded.length ? graded.reduce((s, x) => s + (x.manualGrade ?? x.aiGrade ?? 0), 0) / graded.length : null;
+		const avg = graded.length
+			? graded.reduce((s, x) => s + (x.manualGrade ?? x.aiGrade ?? 0), 0) / graded.length
+			: null;
 		return {
 			n: i + 1,
 			type: q.type,
@@ -209,7 +248,9 @@ export async function performance(user: ToolUser, assessmentId: string) {
 			cur.max += q.maxMarks;
 			map.set(k, cur);
 		}
-		return [...map.entries()].map(([name, v]) => ({ name, averagePercent: v.max ? round((v.got / v.max) * 100) : null })).sort((x, y) => (x.averagePercent ?? 0) - (y.averagePercent ?? 0));
+		return [...map.entries()]
+			.map(([name, v]) => ({ name, averagePercent: v.max ? round((v.got / v.max) * 100) : null }))
+			.sort((x, y) => (x.averagePercent ?? 0) - (y.averagePercent ?? 0));
 	};
 
 	const sections = new Map<string, number[]>();
@@ -226,7 +267,9 @@ export async function performance(user: ToolUser, assessmentId: string) {
 			score: round(scores[i], 2),
 			percent: total ? round((scores[i] / total) * 100) : null,
 			integrityScore: round(t.integrityScore),
-			minutesTaken: t.submittedAt ? Math.round((t.submittedAt.getTime() - t.startedAt.getTime()) / 60000) : null,
+			minutesTaken: t.submittedAt
+				? Math.round((t.submittedAt.getTime() - t.startedAt.getTime()) / 60000)
+				: null,
 		}))
 		.sort((x, y) => y.score - x.score);
 
@@ -239,11 +282,22 @@ export async function performance(user: ToolUser, assessmentId: string) {
 		median: round(median, 2),
 		highest: sorted.at(-1) ?? null,
 		lowest: sorted[0] ?? null,
-		passRate: a.passingMarks != null && scores.length ? round((scores.filter((s) => s >= (a.passingMarks ?? 0)).length / scores.length) * 100) : null,
+		passRate:
+			a.passingMarks != null && scores.length
+				? round((scores.filter((s) => s >= (a.passingMarks ?? 0)).length / scores.length) * 100)
+				: null,
 		distribution: Object.fromEntries(buckets.map((b, i) => [b, dist[i]])),
-		bySection: [...sections.entries()].map(([section, list]) => ({ section, students: list.length, mean: round(list.reduce((s, x) => s + x, 0) / list.length, 2) })),
+		bySection: [...sections.entries()].map(([section, list]) => ({
+			section,
+			students: list.length,
+			mean: round(list.reduce((s, x) => s + x, 0) / list.length, 2),
+		})),
 		questions: perQuestion,
-		hardestQuestions: [...perQuestion].filter((q) => q.facilityIndex != null).sort((x, y) => (x.facilityIndex ?? 0) - (y.facilityIndex ?? 0)).slice(0, 5).map((q) => q.n),
+		hardestQuestions: [...perQuestion]
+			.filter((q) => q.facilityIndex != null)
+			.sort((x, y) => (x.facilityIndex ?? 0) - (y.facilityIndex ?? 0))
+			.slice(0, 5)
+			.map((q) => q.n),
 		weakTopics: groupBy("topic").slice(0, 6),
 		weakOutcomes: groupBy("outcome").slice(0, 6),
 		students: students.length > 60 ? [...students.slice(0, 30), ...students.slice(-30)] : students,
@@ -295,16 +349,23 @@ export async function integrityOverview(user: ToolUser, assessmentId: string) {
 	const scores = rows.map((r) => r.integrityScore);
 	return {
 		attempts: rows.length,
-		averageIntegrity: scores.length ? round(scores.reduce((s, x) => s + x, 0) / scores.length) : null,
+		averageIntegrity: scores.length
+			? round(scores.reduce((s, x) => s + x, 0) / scores.length)
+			: null,
 		alertsByType: byType,
 		studentsWithMoreThanThreeAlerts: rows.filter((r) => r.alerts > 3).map((r) => r.student),
 		students: rows,
-		caution: "Alerts are automated indicators with false positives (lighting, glasses, poor webcams, accessibility needs). They are not proof of misconduct.",
+		caution:
+			"Alerts are automated indicators with false positives (lighting, glasses, poor webcams, accessibility needs). They are not proof of misconduct.",
 	};
 }
 
 /** Chronological evidence for one student's attempt (matched by name or roll number). */
-export async function attemptInvestigation(user: ToolUser, assessmentId: string, studentRef: string) {
+export async function attemptInvestigation(
+	user: ToolUser,
+	assessmentId: string,
+	studentRef: string,
+) {
 	const ref = norm(studentRef);
 	const candidates = await prisma.assessmentAttempt.findMany({
 		where: { assessmentId, ...attemptSectionWhere(user) },
@@ -313,15 +374,30 @@ export async function attemptInvestigation(user: ToolUser, assessmentId: string,
 	const match =
 		candidates.find((c) => c.student?.rollNumber && norm(c.student.rollNumber) === ref) ??
 		candidates.find((c) => norm(c.studentName) === ref) ??
-		candidates.find((c) => norm(c.studentName).includes(ref) || ref.split(" ").every((w) => norm(c.studentName).includes(w)));
-	if (!match) return { found: false, searched: studentRef, studentsAvailable: candidates.slice(0, 20).map((c) => c.studentName) };
+		candidates.find(
+			(c) =>
+				norm(c.studentName).includes(ref) ||
+				ref.split(" ").every((w) => norm(c.studentName).includes(w)),
+		);
+	if (!match)
+		return {
+			found: false,
+			searched: studentRef,
+			studentsAvailable: candidates.slice(0, 20).map((c) => c.studentName),
+		};
 
 	const t = await prisma.assessmentAttempt.findUnique({
 		where: { id: match.id },
 		include: {
 			violations: { orderBy: { timestamp: "asc" } },
 			proctoringTimeline: { orderBy: { timestamp: "asc" } },
-			answers: { include: { question: { select: { text: true, type: true, points: true, correctAnswer: true, order: true } } } },
+			answers: {
+				include: {
+					question: {
+						select: { text: true, type: true, points: true, correctAnswer: true, order: true },
+					},
+				},
+			},
 			student: { select: { rollNumber: true, section: true } },
 			_count: { select: { recordingSegments: true } },
 		},
@@ -333,8 +409,23 @@ export async function attemptInvestigation(user: ToolUser, assessmentId: string,
 		return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 	};
 	const timeline = [
-		...t.violations.map((v) => ({ t: v.timestamp, at: at(v.timestamp), kind: "alert", type: v.type, severity: v.severity, detail: clip(v.description, 160), network: v.network, latencyMs: v.latency })),
-		...t.proctoringTimeline.map((e) => ({ t: e.timestamp, at: at(e.timestamp), kind: "event", type: e.event, detail: clip(e.details, 160) })),
+		...t.violations.map((v) => ({
+			t: v.timestamp,
+			at: at(v.timestamp),
+			kind: "alert",
+			type: v.type,
+			severity: v.severity,
+			detail: clip(v.description, 160),
+			network: v.network,
+			latencyMs: v.latency,
+		})),
+		...t.proctoringTimeline.map((e) => ({
+			t: e.timestamp,
+			at: at(e.timestamp),
+			kind: "event",
+			type: e.event,
+			detail: clip(e.details, 160),
+		})),
 	]
 		.sort((x, y) => x.t.getTime() - y.t.getTime())
 		.slice(0, 120)
@@ -387,7 +478,10 @@ export async function liveStatus(user: ToolUser, assessmentId: string) {
 			isOnline: true,
 			lastHeartbeatAt: true,
 			timeLeft: true,
-			violations: { where: { timestamp: { gte: new Date(now - 10 * 60 * 1000) } }, select: { type: true } },
+			violations: {
+				where: { timestamp: { gte: new Date(now - 10 * 60 * 1000) } },
+				select: { type: true },
+			},
 		},
 	});
 	const rows = attempts.map((t) => ({
@@ -405,7 +499,9 @@ export async function liveStatus(user: ToolUser, assessmentId: string) {
 		inProgress: rows.length,
 		online: rows.filter((r) => r.online).length,
 		offline: rows.filter((r) => !r.online).map((r) => r.student),
-		needingAttention: rows.filter((r) => r.alertsLast10Min >= 2 || r.integrityScore < 70 || r.face !== "Detected").map((r) => r.student),
+		needingAttention: rows
+			.filter((r) => r.alertsLast10Min >= 2 || r.integrityScore < 70 || r.face !== "Detected")
+			.map((r) => r.student),
 		students: rows,
 	};
 }
@@ -424,7 +520,12 @@ function cosine(a: number[], b: number[]) {
 	return na && nb ? dot / Math.sqrt(na * nb) : 0;
 }
 
-const words = (s: string) => new Set(norm(s).split(" ").filter((w) => w.length > 2));
+const words = (s: string) =>
+	new Set(
+		norm(s)
+			.split(" ")
+			.filter((w) => w.length > 2),
+	);
 function jaccard(a: string, b: string) {
 	const x = words(a);
 	const y = words(b);
@@ -439,7 +540,15 @@ export async function answerSimilarity(user: ToolUser, assessmentId: string) {
 		select: { id: true, text: true, order: true },
 		orderBy: { order: "asc" },
 	});
-	const pairs: { question: number; studentA: string; studentB: string; similarity: number; method: string; excerptA: string; excerptB: string }[] = [];
+	const pairs: {
+		question: number;
+		studentA: string;
+		studentB: string;
+		similarity: number;
+		method: string;
+		excerptA: string;
+		excerptB: string;
+	}[] = [];
 	for (const q of questions) {
 		const answers = await prisma.answer.findMany({
 			where: { questionId: q.id, attempt: { ...attemptSectionWhere(user) } },
@@ -461,7 +570,16 @@ export async function answerSimilarity(user: ToolUser, assessmentId: string) {
 				} catch {
 					/* ignore malformed */
 				}
-				if (sim >= 0.8) pairs.push({ question: q.order + 1, studentA: A.attempt.studentName, studentB: B.attempt.studentName, similarity: round(sim, 2), method, excerptA: clip(A.response, 160), excerptB: clip(B.response, 160) });
+				if (sim >= 0.8)
+					pairs.push({
+						question: q.order + 1,
+						studentA: A.attempt.studentName,
+						studentB: B.attempt.studentName,
+						similarity: round(sim, 2),
+						method,
+						excerptA: clip(A.response, 160),
+						excerptB: clip(B.response, 160),
+					});
 			}
 		}
 	}
@@ -469,7 +587,8 @@ export async function answerSimilarity(user: ToolUser, assessmentId: string) {
 	return {
 		writtenQuestionsChecked: questions.length,
 		similarPairs: pairs.slice(0, 15),
-		caution: "High similarity can come from model answers, shared textbooks or short factual responses. Review the full answers before drawing conclusions.",
+		caution:
+			"High similarity can come from model answers, shared textbooks or short factual responses. Review the full answers before drawing conclusions.",
 	};
 }
 
@@ -477,12 +596,21 @@ export async function answerSimilarity(user: ToolUser, assessmentId: string) {
 
 /** Syllabus structure plus excerpts of the course's own documents (trusted knowledge base). */
 export async function courseKnowledge(assessmentId: string, maxChars = 18_000) {
-	const a = await prisma.assessment.findUnique({ where: { id: assessmentId }, select: { courseId: true, syllabusId: true } });
+	const a = await prisma.assessment.findUnique({
+		where: { id: assessmentId },
+		select: { courseId: true, syllabusId: true },
+	});
 	if (!a?.courseId) return null;
 	const course = await prisma.course.findUnique({
 		where: { id: a.courseId },
 		include: {
-			syllabi: { where: a.syllabusId ? { id: a.syllabusId } : {}, take: 1, include: { units: { orderBy: { order: "asc" }, include: { topics: { orderBy: { order: "asc" } } } } } },
+			syllabi: {
+				where: a.syllabusId ? { id: a.syllabusId } : {},
+				take: 1,
+				include: {
+					units: { orderBy: { order: "asc" }, include: { topics: { orderBy: { order: "asc" } } } },
+				},
+			},
 			materials: { include: { file: true }, orderBy: { createdAt: "desc" }, take: 8 },
 		},
 	});
@@ -492,9 +620,19 @@ export async function courseKnowledge(assessmentId: string, maxChars = 18_000) {
 	for (const m of course.materials) {
 		if (budget <= 500 || !m.file) continue;
 		const mime = m.file.mimeType;
-		if (!["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "text/plain", "text/markdown"].includes(mime)) continue;
+		if (
+			![
+				"application/pdf",
+				"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+				"text/plain",
+				"text/markdown",
+			].includes(mime)
+		)
+			continue;
 		try {
-			const text = mime.startsWith("text/") ? Buffer.from(m.file.data).toString("utf-8") : await extractText(Buffer.from(m.file.data).toString("base64"), mime);
+			const text = mime.startsWith("text/")
+				? Buffer.from(m.file.data).toString("utf-8")
+				: await extractText(Buffer.from(m.file.data).toString("base64"), mime);
 			const excerpt = text.replace(/\s+/g, " ").trim().slice(0, Math.min(6000, budget));
 			if (excerpt) {
 				docs.push({ title: m.title, excerpt });
@@ -506,7 +644,12 @@ export async function courseKnowledge(assessmentId: string, maxChars = 18_000) {
 	}
 	return {
 		course: `${course.code} — ${course.name}`,
-		syllabus: course.syllabi[0]?.units.map((u) => ({ unit: u.number, title: u.title, topics: u.topics.map((t) => t.title) })) ?? [],
+		syllabus:
+			course.syllabi[0]?.units.map((u) => ({
+				unit: u.number,
+				title: u.title,
+				topics: u.topics.map((t) => t.title),
+			})) ?? [],
 		materials: course.materials.map((m) => ({ title: m.title, kind: m.kind, link: m.url })),
 		documentExcerpts: docs,
 	};
@@ -516,7 +659,11 @@ export async function courseKnowledge(assessmentId: string, maxChars = 18_000) {
  * Finds a student of this assessment (within the faculty's sections) whose name or
  * roll number appears in the message — a fallback when the router missed it.
  */
-export async function findMentionedStudent(user: ToolUser, assessmentId: string, message: string): Promise<string | null> {
+export async function findMentionedStudent(
+	user: ToolUser,
+	assessmentId: string,
+	message: string,
+): Promise<string | null> {
 	const text = ` ${norm(message)} `;
 	const attempts = await prisma.assessmentAttempt.findMany({
 		where: { assessmentId, ...attemptSectionWhere(user) },
@@ -527,7 +674,9 @@ export async function findMentionedStudent(user: ToolUser, assessmentId: string,
 	for (const a of attempts) {
 		const roll = a.student?.rollNumber ? norm(a.student.rollNumber) : "";
 		if (roll && text.includes(` ${roll} `)) return a.studentName;
-		const parts = norm(a.studentName).split(" ").filter((p) => p.length > 2);
+		const parts = norm(a.studentName)
+			.split(" ")
+			.filter((p) => p.length > 2);
 		const hits = parts.filter((p) => text.includes(` ${p} `)).length;
 		const score = parts.length ? hits / parts.length : 0;
 		if (hits > 0 && (!best || score > best.score)) best = { name: a.studentName, score };

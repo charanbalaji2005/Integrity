@@ -21,7 +21,15 @@ const BUILT_IN: SeedArticle[] = [
 		title: "Allowing camera and microphone access",
 		category: "camera_microphone",
 		summary: "Fix 'camera not detected' or blocked permission errors before or during an exam.",
-		tags: ["camera", "webcam", "microphone", "permission", "blocked", "not detected", "black screen"],
+		tags: [
+			"camera",
+			"webcam",
+			"microphone",
+			"permission",
+			"blocked",
+			"not detected",
+			"black screen",
+		],
 		visibility: "public",
 		body: "1. Click the camera/lock icon in the browser address bar and set Camera and Microphone to Allow, then reload the page.\n2. Close other apps that use the camera (Zoom, Teams, Meet, the Windows Camera app) — only one app can use it at a time.\n3. On Windows: Settings > Privacy & security > Camera (and Microphone) > allow access for desktop apps and your browser.\n4. On macOS: System Settings > Privacy & Security > Camera/Microphone > enable your browser, then restart the browser.\n5. If you use an external webcam, reconnect it and pick it in Settings > Camera & Face ID inside IntegrityOS.\n6. Run the webcam check again from the exam start screen.",
 	},
@@ -53,7 +61,16 @@ const BUILT_IN: SeedArticle[] = [
 		title: "My exam won't start",
 		category: "examination",
 		summary: "Common reasons the Start button is locked or the exam refuses to open.",
-		tags: ["exam", "start", "locked", "verify", "verification", "desktop", "cannot start", "availability"],
+		tags: [
+			"exam",
+			"start",
+			"locked",
+			"verify",
+			"verification",
+			"desktop",
+			"cannot start",
+			"availability",
+		],
 		visibility: "public",
 		body: "1. Enrolment verification: exams unlock only after an administrator approves your college ID card or fee receipt (Dashboard banner shows the status).\n2. Device: proctored exams can only be started on a laptop or desktop computer.\n3. Availability window: the exam may not have opened yet, may have ended, or may be locked by the instructor.\n4. Camera: the webcam check and calibration must succeed before the exam opens.\nIf none of these apply, include the exam name and the exact error message in your ticket.",
 	},
@@ -61,7 +78,16 @@ const BUILT_IN: SeedArticle[] = [
 		title: "My exam was paused or I received a warning",
 		category: "ai_proctoring",
 		summary: "How AI proctoring warnings and automatic pauses work.",
-		tags: ["paused", "warning", "proctor", "suspended", "flag", "phone detected", "face not detected", "multiple faces"],
+		tags: [
+			"paused",
+			"warning",
+			"proctor",
+			"suspended",
+			"flag",
+			"phone detected",
+			"face not detected",
+			"multiple faces",
+		],
 		visibility: "public",
 		body: "The AI proctor warns you about sustained look-aways, tab switches, a face leaving the frame, possible speech and objects such as books or earphones. It pauses the exam for serious events such as a phone or second screen in view, being out of frame for several seconds, another person in the camera, or a face that doesn't match the one enrolled at calibration. A paused exam can only be resumed by your faculty proctor — stay at your seat with the camera on. Warnings are reviewed by faculty; they are not an automatic finding of misconduct.",
 	},
@@ -142,17 +168,39 @@ export interface KbArticle {
 	updatedAt: string;
 }
 
-function toArticle(a: { id: string; title: string; category: string; summary: string; body: string; visibility: string; tags: string; updatedAt: Date }): KbArticle {
+function toArticle(a: {
+	id: string;
+	title: string;
+	category: string;
+	summary: string;
+	body: string;
+	visibility: string;
+	tags: string;
+	updatedAt: Date;
+}): KbArticle {
 	let tags: string[] = [];
 	try {
 		tags = JSON.parse(a.tags);
 	} catch {
 		/* ignore */
 	}
-	return { id: a.id, title: a.title, category: a.category, summary: a.summary, body: a.body, visibility: a.visibility === "internal" ? "internal" : "public", tags, updatedAt: a.updatedAt.toISOString() };
+	return {
+		id: a.id,
+		title: a.title,
+		category: a.category,
+		summary: a.summary,
+		body: a.body,
+		visibility: a.visibility === "internal" ? "internal" : "public",
+		tags,
+		updatedAt: a.updatedAt.toISOString(),
+	};
 }
 
-const STOP = new Set("a an the and or to of in on for is it my i me we you can't cant not with this that from at be when what how why".split(" "));
+const STOP = new Set(
+	"a an the and or to of in on for is it my i me we you can't cant not with this that from at be when what how why".split(
+		" ",
+	),
+);
 function terms(s: string): string[] {
 	return s
 		.toLowerCase()
@@ -161,7 +209,12 @@ function terms(s: string): string[] {
 }
 
 /** Keyword retrieval (title ×3, tags ×2, summary/body ×1, category boost). */
-export async function searchKnowledgeBase(params: { q?: string; category?: string; includeInternal: boolean; limit?: number }): Promise<KbArticle[]> {
+export async function searchKnowledgeBase(params: {
+	q?: string;
+	category?: string;
+	includeInternal: boolean;
+	limit?: number;
+}): Promise<KbArticle[]> {
 	const rows = await prisma.knowledgeArticle.findMany({
 		where: params.includeInternal ? {} : { visibility: "public" },
 		orderBy: { updatedAt: "desc" },
@@ -188,11 +241,19 @@ export async function searchKnowledgeBase(params: { q?: string; category?: strin
 	return scored.slice(0, params.limit ?? 20).map((x) => x.a);
 }
 
-export async function createArticle(data: Omit<KbArticle, "id" | "updatedAt">, authorId: string): Promise<KbArticle> {
-	const row = await prisma.knowledgeArticle.create({ data: { ...data, tags: JSON.stringify(data.tags), authorId } });
+export async function createArticle(
+	data: Omit<KbArticle, "id" | "updatedAt">,
+	authorId: string,
+): Promise<KbArticle> {
+	const row = await prisma.knowledgeArticle.create({
+		data: { ...data, tags: JSON.stringify(data.tags), authorId },
+	});
 	return toArticle(row);
 }
-export async function updateArticle(id: string, data: Partial<Omit<KbArticle, "id" | "updatedAt">>): Promise<KbArticle> {
+export async function updateArticle(
+	id: string,
+	data: Partial<Omit<KbArticle, "id" | "updatedAt">>,
+): Promise<KbArticle> {
 	const { tags, ...rest } = data;
 	const row = await prisma.knowledgeArticle.update({
 		where: { id },

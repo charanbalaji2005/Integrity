@@ -37,8 +37,16 @@ export const LIVE_ASSESSMENTS: SeedLiveAssessment[] = [
 		duration: 45,
 		openDays: 14,
 		questions: [
-			mcq("Which normal form removes transitive dependencies?", ["1NF", "2NF", "3NF", "BCNF"], "3NF"),
-			mcq("Which SQL clause filters rows after aggregation?", ["WHERE", "HAVING", "GROUP BY", "ORDER BY"], "HAVING"),
+			mcq(
+				"Which normal form removes transitive dependencies?",
+				["1NF", "2NF", "3NF", "BCNF"],
+				"3NF",
+			),
+			mcq(
+				"Which SQL clause filters rows after aggregation?",
+				["WHERE", "HAVING", "GROUP BY", "ORDER BY"],
+				"HAVING",
+			),
 			mcq(
 				"Which ACID property guarantees committed data survives a crash?",
 				["Atomicity", "Consistency", "Isolation", "Durability"],
@@ -77,7 +85,11 @@ export const LIVE_ASSESSMENTS: SeedLiveAssessment[] = [
 				["Round Robin", "FCFS", "Shortest Job First", "Multilevel Feedback with ageing"],
 				"Shortest Job First",
 			),
-			mcq("What does a TLB cache?", ["Disk blocks", "Page table entries", "System calls", "Interrupt vectors"], "Page table entries"),
+			mcq(
+				"What does a TLB cache?",
+				["Disk blocks", "Page table entries", "System calls", "Interrupt vectors"],
+				"Page table entries",
+			),
 			mcq(
 				"Which condition is NOT required for deadlock?",
 				["Mutual exclusion", "Hold and wait", "Preemption", "Circular wait"],
@@ -96,12 +108,17 @@ export const LIVE_ASSESSMENTS: SeedLiveAssessment[] = [
 	{
 		id: "seed-live-python-lab",
 		title: "Live: Python Programming Lab Test",
-		description: "Hands-on proctored coding test. Webcam, tab-switch and behaviour monitoring are enabled.",
+		description:
+			"Hands-on proctored coding test. Webcam, tab-switch and behaviour monitoring are enabled.",
 		duration: 60,
 		openDays: 10,
 		questions: [
 			mcq("What is the output of len({1, 2, 2, 3})?", ["2", "3", "4", "Error"], "3"),
-			mcq("Which keyword creates a generator function?", ["return", "yield", "async", "lambda"], "yield"),
+			mcq(
+				"Which keyword creates a generator function?",
+				["return", "yield", "async", "lambda"],
+				"yield",
+			),
 			{
 				type: "coding",
 				text: "Write a function is_anagram(a, b) that returns True when the two strings are anagrams, ignoring case and spaces.",
@@ -123,8 +140,16 @@ export const LIVE_ASSESSMENTS: SeedLiveAssessment[] = [
 		duration: 30,
 		openDays: 21,
 		questions: [
-			mcq("Which layer does a router primarily operate at?", ["Data link", "Network", "Transport", "Application"], "Network"),
-			mcq("Which protocol resolves IP addresses to MAC addresses?", ["DNS", "DHCP", "ARP", "ICMP"], "ARP"),
+			mcq(
+				"Which layer does a router primarily operate at?",
+				["Data link", "Network", "Transport", "Application"],
+				"Network",
+			),
+			mcq(
+				"Which protocol resolves IP addresses to MAC addresses?",
+				["DNS", "DHCP", "ARP", "ICMP"],
+				"ARP",
+			),
 			mcq(
 				"TCP's three-way handshake uses which sequence?",
 				["SYN, ACK, FIN", "SYN, SYN-ACK, ACK", "ACK, SYN, ACK", "SYN, FIN, ACK"],
@@ -145,13 +170,22 @@ export const LIVE_ASSESSMENTS: SeedLiveAssessment[] = [
  * so the student "Live Sessions" view and faculty live monitoring have data to work with.
  * Safe to re-run: assessments are upserted and questions are only created once.
  */
-export async function seedLiveAssessments(facultyId: string, facultyName: string): Promise<string[]> {
+export async function seedLiveAssessments(
+	facultyId: string,
+	facultyName: string,
+): Promise<string[]> {
 	const now = new Date();
 	const seeded: string[] = [];
 
 	for (const a of LIVE_ASSESSMENTS) {
 		const end = new Date(now.getTime() + a.openDays * 24 * 60 * 60 * 1000);
-		const window = { availabilityStart: now, availabilityEnd: end, published: true, facultyId, facultyName };
+		const window = {
+			availabilityStart: now,
+			availabilityEnd: end,
+			published: true,
+			facultyId,
+			facultyName,
+		};
 
 		await prisma.assessment.upsert({
 			where: { id: a.id },

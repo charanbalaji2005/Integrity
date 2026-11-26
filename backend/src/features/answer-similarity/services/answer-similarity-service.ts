@@ -123,7 +123,7 @@ export async function analyzeSimilarity(
 				explanation = parsed.explanation;
 			}
 		}
-	} catch (err) {
+	} catch {
 		// Fail open/back to cosine-based defaults
 		explanation = `Deterministic embedding similarity is ${Math.round(overallSimilarity * 100)}%. The response matches the key semantic themes of the rubric. Plagiarism risk is estimated at ${riskScore}%.`;
 	}

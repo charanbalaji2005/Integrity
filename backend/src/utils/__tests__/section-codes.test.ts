@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { canonicalSection, canonicalSectionList, departmentPrefix, resolveStudentSection } from "../section-codes";
+import {
+	canonicalSection,
+	canonicalSectionList,
+	departmentPrefix,
+	resolveStudentSection,
+} from "../section-codes";
 
 describe("section codes", () => {
 	it("maps department codes and full names to prefixes", () => {

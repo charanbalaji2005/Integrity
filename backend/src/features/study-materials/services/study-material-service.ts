@@ -2,13 +2,10 @@ import { z } from "zod";
 import { HTTP_STATUS } from "@/constants/http-status";
 import { prisma } from "@/database";
 import { AppError } from "@/utils/app-error";
-import {
-	SECTION_CODE_RE,
-	normalizeSectionCode,
-} from "@/utils/faculty-sections";
 import { normalizeSemester } from "@/utils/departments";
-import { canonicalSection, canonicalSectionList } from "@/utils/section-codes";
+import { normalizeSectionCode, SECTION_CODE_RE } from "@/utils/faculty-sections";
 import { isMultiPortalEmail } from "@/utils/multi-portal";
+import { canonicalSection, canonicalSectionList } from "@/utils/section-codes";
 import { storeFile, type UploadedFile } from "../../courses/services/file-storage";
 
 /**
@@ -37,7 +34,8 @@ export interface MaterialUser {
 
 /** The user's own section(s) as DEPT-LETTER codes (older profiles may store just "A"). */
 const ownSectionsOf = (u: MaterialUser) => canonicalSectionList(u.section, u.department);
-const studentSectionOf = (u: MaterialUser) => canonicalSection(u.section, u.department) ?? normalizeSectionCode(u.section);
+const studentSectionOf = (u: MaterialUser) =>
+	canonicalSection(u.section, u.department) ?? normalizeSectionCode(u.section);
 
 const isUnrestricted = (u: MaterialUser) => u.role === "admin" || isMultiPortalEmail(u.email);
 const isStaff = (u: MaterialUser) => u.role === "faculty" || u.role === "admin";
@@ -62,10 +60,17 @@ export const createMaterialSchema = z.object({
 	semester: z.string().trim().optional().default(""),
 });
 
-function canView(user: MaterialUser, m: { section: string; semester: string | null; uploadedById: string }) {
+function canView(
+	user: MaterialUser,
+	m: { section: string; semester: string | null; uploadedById: string },
+) {
 	if (isUnrestricted(user)) return true;
 	if (user.role === "faculty") {
-		return m.uploadedById === user.id || m.section === ALL_SECTIONS || ownSectionsOf(user).includes(m.section);
+		return (
+			m.uploadedById === user.id ||
+			m.section === ALL_SECTIONS ||
+			ownSectionsOf(user).includes(m.section)
+		);
 	}
 	// Students
 	const sectionOk = m.section === ALL_SECTIONS || m.section === studentSectionOf(user);
@@ -89,24 +94,41 @@ export async function listMaterials(user: MaterialUser) {
 			};
 		}
 	}
-	const rows = await prisma.studyMaterial.findMany({ where, select: listSelect, orderBy: { createdAt: "desc" } });
+	const rows = await prisma.studyMaterial.findMany({
+		where,
+		select: listSelect,
+		orderBy: { createdAt: "desc" },
+	});
 	return rows.map((r) => ({
 		...r,
 		canDelete: isUnrestricted(user) || r.uploadedById === user.id,
 	}));
 }
 
-export async function createMaterial(user: MaterialUser, input: unknown, file: UploadedFile | undefined) {
+export async function createMaterial(
+	user: MaterialUser,
+	input: unknown,
+	file: UploadedFile | undefined,
+) {
 	if (!isStaff(user)) {
-		throw new AppError("Only faculty and administrators can upload study materials.", HTTP_STATUS.FORBIDDEN);
+		throw new AppError(
+			"Only faculty and administrators can upload study materials.",
+			HTTP_STATUS.FORBIDDEN,
+		);
 	}
 	const parsed = createMaterialSchema.safeParse(input);
 	if (!parsed.success) {
-		throw new AppError(parsed.error.issues[0]?.message ?? "Invalid material details.", HTTP_STATUS.BAD_REQUEST);
+		throw new AppError(
+			parsed.error.issues[0]?.message ?? "Invalid material details.",
+			HTTP_STATUS.BAD_REQUEST,
+		);
 	}
 	const { title, description } = parsed.data;
 	const rawSection = normalizeSectionCode(parsed.data.section);
-	const section = rawSection === ALL_SECTIONS ? rawSection : (canonicalSection(rawSection, user.department) ?? rawSection);
+	const section =
+		rawSection === ALL_SECTIONS
+			? rawSection
+			: (canonicalSection(rawSection, user.department) ?? rawSection);
 	const semester = parsed.data.semester ? normalizeSemester(parsed.data.semester) : null;
 	if (parsed.data.semester && !semester) {
 		throw new AppError("Semester must be between 1 and 8.", HTTP_STATUS.BAD_REQUEST);
@@ -114,14 +136,23 @@ export async function createMaterial(user: MaterialUser, input: unknown, file: U
 
 	if (section === ALL_SECTIONS) {
 		if (!isUnrestricted(user)) {
-			throw new AppError("Only administrators can share a material with every section.", HTTP_STATUS.FORBIDDEN);
+			throw new AppError(
+				"Only administrators can share a material with every section.",
+				HTTP_STATUS.FORBIDDEN,
+			);
 		}
 	} else {
 		if (!SECTION_CODE_RE.test(section)) {
-			throw new AppError("Invalid section code. Use the format CSE-A, ECE-B, …", HTTP_STATUS.BAD_REQUEST);
+			throw new AppError(
+				"Invalid section code. Use the format CSE-A, ECE-B, …",
+				HTTP_STATUS.BAD_REQUEST,
+			);
 		}
 		if (!isUnrestricted(user) && !ownSectionsOf(user).includes(section)) {
-			throw new AppError(`You can only share materials with your own sections (not ${section}).`, HTTP_STATUS.FORBIDDEN);
+			throw new AppError(
+				`You can only share materials with your own sections (not ${section}).`,
+				HTTP_STATUS.FORBIDDEN,
+			);
 		}
 	}
 
@@ -141,7 +172,10 @@ export async function createMaterial(user: MaterialUser, input: unknown, file: U
 }
 
 export async function deleteMaterial(user: MaterialUser, id: string) {
-	const m = await prisma.studyMaterial.findUnique({ where: { id }, select: { uploadedById: true } });
+	const m = await prisma.studyMaterial.findUnique({
+		where: { id },
+		select: { uploadedById: true },
+	});
 	if (!m) throw new AppError("Study material not found.", HTTP_STATUS.NOT_FOUND);
 	if (!isUnrestricted(user) && m.uploadedById !== user.id) {
 		throw new AppError("You can only delete materials you uploaded.", HTTP_STATUS.FORBIDDEN);
@@ -155,7 +189,8 @@ export async function getAccessibleMaterial(user: MaterialUser, id: string) {
 		where: { id },
 		select: { ...listSelect, fileId: true },
 	});
-	if (!m || !canView(user, m)) throw new AppError("Study material not found.", HTTP_STATUS.NOT_FOUND);
+	if (!m || !canView(user, m))
+		throw new AppError("Study material not found.", HTTP_STATUS.NOT_FOUND);
 	return m;
 }
 

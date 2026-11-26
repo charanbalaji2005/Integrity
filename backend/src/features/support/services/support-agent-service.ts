@@ -9,7 +9,11 @@ import { GROQ_MODELS, type GroqMessage, groqChat, moderate } from "@/services/gr
  * Student messages are screened by the safety model first.
  */
 
-export const AI_SENDER = { senderId: "ai-bot", senderName: "AI Support Agent", senderRole: "ai" } as const;
+export const AI_SENDER = {
+	senderId: "ai-bot",
+	senderName: "AI Support Agent",
+	senderRole: "ai",
+} as const;
 
 const KNOWLEDGE = `IntegrityOS facts you may rely on:
 - Supported browsers: latest Google Chrome or Microsoft Edge on a laptop/desktop. Phones and tablets cannot take exams.
@@ -101,10 +105,16 @@ export async function autoReplyToStudent(ticketId: string) {
 		where: { id: ticketId },
 		include: { messages: { orderBy: { createdAt: "asc" } } },
 	});
-	if (!ticket || ticket.status === "active" || ticket.status === "resolved" || ticket.assignedAgentId) return null;
+	if (
+		!ticket ||
+		ticket.status === "active" ||
+		ticket.status === "resolved" ||
+		ticket.assignedAgentId
+	)
+		return null;
 
 	const last = ticket.messages[ticket.messages.length - 1];
-	if (!last || last.senderRole !== "user") return null;
+	if (last?.senderRole !== "user") return null;
 
 	const verdict = await moderate(last.content, "student");
 	if (verdict.flagged) {
@@ -136,7 +146,9 @@ export async function autoReplyToStudent(ticketId: string) {
 }
 
 /** Draft for support staff (not sent). */
-export async function suggestAgentReply(ticketId: string): Promise<{ draft: string; model: string } | null> {
+export async function suggestAgentReply(
+	ticketId: string,
+): Promise<{ draft: string; model: string } | null> {
 	const ticket = await prisma.supportTicket.findUnique({
 		where: { id: ticketId },
 		include: { messages: { orderBy: { createdAt: "asc" } } },

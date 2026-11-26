@@ -11,8 +11,14 @@ export const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 
 const KINDS: Record<string, { kind: "pdf" | "docx" | "pptx" | "text" | "image"; mime: string }> = {
 	pdf: { kind: "pdf", mime: "application/pdf" },
-	docx: { kind: "docx", mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
-	pptx: { kind: "pptx", mime: "application/vnd.openxmlformats-officedocument.presentationml.presentation" },
+	docx: {
+		kind: "docx",
+		mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+	},
+	pptx: {
+		kind: "pptx",
+		mime: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+	},
 	txt: { kind: "text", mime: "text/plain" },
 	md: { kind: "text", mime: "text/markdown" },
 	csv: { kind: "text", mime: "text/csv" },
@@ -39,7 +45,10 @@ const MAX_TOTAL_BYTES = 60 * 1024 * 1024;
  * files can be read without extra dependencies. Decompressed sizes are capped
  * to defuse zip bombs.
  */
-export function readZipEntries(buffer: Buffer, wanted: (name: string) => boolean): Record<string, string> {
+export function readZipEntries(
+	buffer: Buffer,
+	wanted: (name: string) => boolean,
+): Record<string, string> {
 	const EOCD = 0x06054b50;
 	let eocd = -1;
 	for (let i = buffer.length - 22; i >= Math.max(0, buffer.length - 65_557); i--) {
@@ -54,7 +63,8 @@ export function readZipEntries(buffer: Buffer, wanted: (name: string) => boolean
 	const out: Record<string, string> = {};
 	let total = 0;
 	for (let n = 0; n < count; n++) {
-		if (ptr + 46 > buffer.length || buffer.readUInt32LE(ptr) !== 0x02014b50) throw new Error("corrupt central directory");
+		if (ptr + 46 > buffer.length || buffer.readUInt32LE(ptr) !== 0x02014b50)
+			throw new Error("corrupt central directory");
 		const method = buffer.readUInt16LE(ptr + 10);
 		const compressed = buffer.readUInt32LE(ptr + 20);
 		const nameLen = buffer.readUInt16LE(ptr + 28);
@@ -64,7 +74,8 @@ export function readZipEntries(buffer: Buffer, wanted: (name: string) => boolean
 		const name = buffer.toString("utf8", ptr + 46, ptr + 46 + nameLen);
 		ptr += 46 + nameLen + extraLen + commentLen;
 		if (!wanted(name)) continue;
-		if (local + 30 > buffer.length || buffer.readUInt32LE(local) !== 0x04034b50) throw new Error("corrupt local header");
+		if (local + 30 > buffer.length || buffer.readUInt32LE(local) !== 0x04034b50)
+			throw new Error("corrupt local header");
 		const start = local + 30 + buffer.readUInt16LE(local + 26) + buffer.readUInt16LE(local + 28);
 		const raw = buffer.subarray(start, start + compressed);
 		let data: Buffer;
@@ -89,7 +100,9 @@ export function extractPptxText(buffer: Buffer): string {
 	const slideNo = (name: string) => Number(name.match(/(\d+)\.xml$/)?.[1] ?? 0);
 	const textOf = (xml: string) =>
 		[...xml.matchAll(/<a:p\b[\s\S]*?<\/a:p>/g)]
-			.map((p) => [...p[0].matchAll(/<a:t>([\s\S]*?)<\/a:t>/g)].map((t) => decodeXml(t[1])).join(""))
+			.map((p) =>
+				[...p[0].matchAll(/<a:t>([\s\S]*?)<\/a:t>/g)].map((t) => decodeXml(t[1])).join(""),
+			)
 			.filter((l) => l.trim())
 			.join("\n");
 	const slides = Object.keys(files)
@@ -112,14 +125,20 @@ export async function createAttachment(
 	conversationId?: string | null,
 ) {
 	if (!file?.buffer?.length) throw new AppError("No file was uploaded.", HTTP_STATUS.BAD_REQUEST);
-	if (file.size > MAX_ATTACHMENT_BYTES) throw new AppError("Files must be 20 MB or smaller.", HTTP_STATUS.BAD_REQUEST);
+	if (file.size > MAX_ATTACHMENT_BYTES)
+		throw new AppError("Files must be 20 MB or smaller.", HTTP_STATUS.BAD_REQUEST);
 	const ext = path.extname(file.originalname).slice(1).toLowerCase();
 	const type = KINDS[ext];
 	if (!type) {
-		throw new AppError("Supported files: PDF, DOCX, PPTX, TXT, MD, CSV, PNG, JPG, WEBP.", HTTP_STATUS.BAD_REQUEST);
+		throw new AppError(
+			"Supported files: PDF, DOCX, PPTX, TXT, MD, CSV, PNG, JPG, WEBP.",
+			HTTP_STATUS.BAD_REQUEST,
+		);
 	}
 	if (conversationId) {
-		const owned = await prisma.assistantConversation.count({ where: { id: conversationId, userId } });
+		const owned = await prisma.assistantConversation.count({
+			where: { id: conversationId, userId },
+		});
 		if (!owned) throw new AppError("Conversation not found.", HTTP_STATUS.NOT_FOUND);
 	}
 
@@ -135,9 +154,16 @@ export async function createAttachment(
 			HTTP_STATUS.UNPROCESSABLE_ENTITY,
 		);
 	}
-	text = text.replace(/\u0000/g, "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+	text = text
+		.replaceAll("\u0000", "")
+		.replace(/[ \t]+\n/g, "\n")
+		.replace(/\n{3,}/g, "\n\n")
+		.trim();
 	if (!text) {
-		throw new AppError("No readable text was found in this file.", HTTP_STATUS.UNPROCESSABLE_ENTITY);
+		throw new AppError(
+			"No readable text was found in this file.",
+			HTTP_STATUS.UNPROCESSABLE_ENTITY,
+		);
 	}
 	const truncated = text.length > MAX_ATTACHMENT_CHARS;
 	return prisma.assistantAttachment.create({
@@ -151,7 +177,14 @@ export async function createAttachment(
 			extractedText: truncated ? text.slice(0, MAX_ATTACHMENT_CHARS) : text,
 			truncated,
 		},
-		select: { id: true, fileName: true, kind: true, sizeBytes: true, truncated: true, createdAt: true },
+		select: {
+			id: true,
+			fileName: true,
+			kind: true,
+			sizeBytes: true,
+			truncated: true,
+			createdAt: true,
+		},
 	});
 }
 

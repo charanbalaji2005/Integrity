@@ -1,12 +1,25 @@
-import { describe, expect, it } from "vitest";
 import { PDFDocument } from "pdf-lib";
+import { describe, expect, it } from "vitest";
 import { buildResultEmail } from "../result-email";
 import { buildResultPdf } from "../result-pdf";
 
 const base = {
 	studentName: "Asha <Rao>",
-	assessment: { title: "OS Midterm", institutionName: "SRM University AP", facultyName: "Dr. Iyer", passingMarks: 6, totalMarks: null, gradingScheme: "points" },
-	attempt: { submittedAt: new Date("2026-11-18T10:00:00Z"), integrityScore: 92.4, riskLevel: "low", certificateNumber: "IOS-AB12-123456", verificationCode: "XK29QZ7P" },
+	assessment: {
+		title: "OS Midterm",
+		institutionName: "SRM University AP",
+		facultyName: "Dr. Iyer",
+		passingMarks: 6,
+		totalMarks: null,
+		gradingScheme: "points",
+	},
+	attempt: {
+		submittedAt: new Date("2026-11-18T10:00:00Z"),
+		integrityScore: 92.4,
+		riskLevel: "low",
+		certificateNumber: "IOS-AB12-123456",
+		verificationCode: "XK29QZ7P",
+	},
 	portalUrl: "https://integrity.example.edu",
 };
 
@@ -41,11 +54,14 @@ describe("buildResultEmail", () => {
 		expect(r.html).toContain("Asha &lt;Rao&gt;".split(" ")[0]);
 		expect(r.html).toContain("1 answer is still under faculty review");
 		expect(r.html).toContain("Below pass mark");
-
 	});
 
 	it("never certifies a high-risk attempt as verified", () => {
-		const r = buildResultEmail({ ...base, attempt: { ...base.attempt, integrityScore: 95, riskLevel: "high" }, questions: [] });
+		const r = buildResultEmail({
+			...base,
+			attempt: { ...base.attempt, integrityScore: 95, riskLevel: "high" },
+			questions: [],
+		});
 		expect(r.html).toContain("Under Faculty Review");
 		expect(r.html).not.toContain("Integrity Verified");
 	});
@@ -75,8 +91,18 @@ describe("buildResultPdf", () => {
 	});
 
 	it("handles names outside the Latin alphabet and long question lists", async () => {
-		const many = Array.from({ length: 70 }, (_, i) => ({ order: i, type: "descriptive", points: 1, awarded: 1, underReview: false }));
-		const bytes = await buildResultPdf({ ...input, studentName: "చరణ్ బాలాజీ Neelampalli", questions: many });
+		const many = Array.from({ length: 70 }, (_, i) => ({
+			order: i,
+			type: "descriptive",
+			points: 1,
+			awarded: 1,
+			underReview: false,
+		}));
+		const bytes = await buildResultPdf({
+			...input,
+			studentName: "చరణ్ బాలాజీ Neelampalli",
+			questions: many,
+		});
 		const doc = await PDFDocument.load(bytes);
 		expect(doc.getPageCount()).toBeGreaterThanOrEqual(3); // results continue on another page
 	});

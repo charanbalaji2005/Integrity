@@ -1,4 +1,5 @@
 import { prisma } from "@/database";
+import { errorMessage } from "@/utils/error-message";
 import { getIO } from "../../../providers/socket";
 import { runCompleteAIEvaluation } from "./ai-pipeline";
 import { sendResultEmail } from "./result-email";
@@ -126,7 +127,8 @@ async function processNextJob() {
 
 			// 3. Email the student their results and completion certificate (once; never fails the job)
 			void sendResultEmail(attempt.id).then((r) => {
-				if (r === "sent") console.log(`[Queue Worker] Results email sent for attempt ${attempt.id}`);
+				if (r === "sent")
+					console.log(`[Queue Worker] Results email sent for attempt ${attempt.id}`);
 			});
 
 			// 4. Emit socket event
@@ -140,7 +142,7 @@ async function processNextJob() {
 				});
 			}
 		}
-	} catch (err: any) {
+	} catch (err) {
 		const nextRetry = job.retryCount + 1;
 		const isFatal = nextRetry >= job.maxRetries;
 		const finalStatus = isFatal ? "failed" : "pending";
@@ -155,7 +157,7 @@ async function processNextJob() {
 			data: {
 				status: finalStatus,
 				retryCount: nextRetry,
-				errorLog: err?.message || String(err),
+				errorLog: errorMessage(err, String(err)),
 			},
 		});
 	}

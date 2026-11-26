@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
+import { errorMessage } from "@/utils/error-message";
 import { HTTP_STATUS } from "../../../constants/http-status";
 import { AppError } from "../../../utils/app-error";
 import { sendSuccess } from "../../../utils/response";
@@ -29,8 +30,11 @@ export async function extract(req: Request, res: Response): Promise<void> {
 	try {
 		const text = await extractText(file, fileType);
 		sendSuccess(res, { text }, "Text extracted successfully.", HTTP_STATUS.OK);
-	} catch (err: any) {
-		throw new AppError(err.message || "Failed to extract text.", HTTP_STATUS.INTERNAL_SERVER_ERROR);
+	} catch (err) {
+		throw new AppError(
+			errorMessage(err, "Failed to extract text."),
+			HTTP_STATUS.INTERNAL_SERVER_ERROR,
+		);
 	}
 }
 
@@ -49,9 +53,9 @@ export async function extractAndChunk(req: Request, res: Response): Promise<void
 		const text = await extractText(file, fileType);
 		const chunks = recursiveChunkText(text, chunkSize, chunkOverlap);
 		sendSuccess(res, { text, chunks }, "Text extracted and chunked successfully.", HTTP_STATUS.OK);
-	} catch (err: any) {
+	} catch (err) {
 		throw new AppError(
-			err.message || "Failed to extract and chunk text.",
+			errorMessage(err, "Failed to extract and chunk text."),
 			HTTP_STATUS.INTERNAL_SERVER_ERROR,
 		);
 	}

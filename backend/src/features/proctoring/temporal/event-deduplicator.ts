@@ -86,7 +86,7 @@ export class ProctorEventDeduplicator {
 		const key = `${attemptId}:${type}`;
 		const existing = this.activeEvents.get(key);
 
-		if (existing && existing.isOngoing) {
+		if (existing?.isOngoing) {
 			existing.endTime = timestamp;
 			existing.durationMs = Math.max(1000, existing.endTime - existing.startTime);
 			existing.isOngoing = false;

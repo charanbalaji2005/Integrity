@@ -2,9 +2,10 @@ import { fromNodeHeaders } from "better-auth/node";
 import { type IRouter, Router } from "express";
 import { HTTP_STATUS } from "@/constants/http-status";
 import { prisma } from "@/database";
+import { isTwoFactorPending } from "@/features/authentication/services/two-factor-service";
 import { auth } from "@/providers/auth";
 import { AppError } from "@/utils/app-error";
-import { isTwoFactorPending } from "@/features/authentication/services/two-factor-service";
+import { agentControlRouter } from "../../features/proctoring/agent-control/agent-control-routes";
 import {
 	createFacultyHandler,
 	createStudentHandler,
@@ -36,11 +37,10 @@ import {
 	updateUserRoleHandler,
 	verifyEmailHandler,
 } from "../controllers/admin-controller";
-import { agentControlRouter } from "../../features/proctoring/agent-control/agent-control-routes";
 
 const router: IRouter = Router();
 
-async function adminMiddleware(req: any, res: any, next: any) {
+async function adminMiddleware(req: any, _res: any, next: any) {
 	try {
 		const sessionData = await auth.api.getSession({
 			headers: fromNodeHeaders(req.headers),
@@ -64,9 +64,11 @@ async function adminMiddleware(req: any, res: any, next: any) {
 		}
 
 		throw new AppError("Unauthorized: Administrator privileges required", HTTP_STATUS.UNAUTHORIZED);
-	} catch (err: any) {
+	} catch (err) {
 		if (err instanceof AppError) return next(err);
-		return next(new AppError("Unauthorized: Administrator privileges required", HTTP_STATUS.UNAUTHORIZED));
+		return next(
+			new AppError("Unauthorized: Administrator privileges required", HTTP_STATUS.UNAUTHORIZED),
+		);
 	}
 }
 

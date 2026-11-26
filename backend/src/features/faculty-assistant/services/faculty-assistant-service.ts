@@ -29,9 +29,15 @@ export interface FacultyIdentity {
 
 /** A faculty member is "verified" when their email is verified and the account is active. */
 export function facultyEligibility(user: FacultyIdentity): { eligible: boolean; reason?: string } {
-	if (user.role !== "faculty") return { eligible: false, reason: "The AI assistant is available to faculty members only." };
-	if (!user.emailVerified) return { eligible: false, reason: "Verify your institutional email to unlock the AI assistant." };
-	if (user.status !== "active") return { eligible: false, reason: "Your account must be active to use the AI assistant." };
+	if (user.role !== "faculty")
+		return { eligible: false, reason: "The AI assistant is available to faculty members only." };
+	if (!user.emailVerified)
+		return {
+			eligible: false,
+			reason: "Verify your institutional email to unlock the AI assistant.",
+		};
+	if (user.status !== "active")
+		return { eligible: false, reason: "Your account must be active to use the AI assistant." };
 	return { eligible: true };
 }
 
@@ -88,7 +94,10 @@ export async function chatWithAssistant(
 		}
 	}
 
-	const messages: GroqMessage[] = [{ role: "system", content: systemPrompt(user) }, ...input.messages];
+	const messages: GroqMessage[] = [
+		{ role: "system", content: systemPrompt(user) },
+		...input.messages,
+	];
 	const groqReply = await groqChat({
 		role: "reasoning",
 		messages,
@@ -102,5 +111,8 @@ export async function chatWithAssistant(
 	const ollamaReply = await callOllama(messages as { role: string; content: string }[]);
 	if (ollamaReply) return { reply: ollamaReply, model: env.OLLAMA_CHAT_MODEL };
 
-	throw new AppError("The AI assistant is unavailable right now. Please try again shortly.", HTTP_STATUS.SERVICE_UNAVAILABLE);
+	throw new AppError(
+		"The AI assistant is unavailable right now. Please try again shortly.",
+		HTTP_STATUS.SERVICE_UNAVAILABLE,
+	);
 }

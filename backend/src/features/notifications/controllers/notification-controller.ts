@@ -44,7 +44,7 @@ export async function getNotifications(req: Request, res: Response): Promise<voi
 	const portal = typeof req.query.portal === "string" ? req.query.portal : null;
 	if (!canSeeSystemAlerts(user.role) || (portal !== null && portal !== "admin")) {
 		whereClause.type =
-			whereClause.type === SYSTEM_TYPE ? { in: [] } : whereClause.type ?? { not: SYSTEM_TYPE };
+			whereClause.type === SYSTEM_TYPE ? { in: [] } : (whereClause.type ?? { not: SYSTEM_TYPE });
 	}
 
 	const notifications = await prisma.notification.findMany({

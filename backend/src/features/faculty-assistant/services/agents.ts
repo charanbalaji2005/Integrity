@@ -1,7 +1,15 @@
 import { GROQ_MODELS, groqChat, parseJsonReply } from "@/services/groq";
 
 export type AgentId = "question" | "integrity" | "analytics" | "grading" | "document" | "academic";
-export type DataNeed = "overview" | "performance" | "integrity" | "student" | "live" | "similarity" | "course" | "list";
+export type DataNeed =
+	| "overview"
+	| "performance"
+	| "integrity"
+	| "student"
+	| "live"
+	| "similarity"
+	| "course"
+	| "list";
 
 export interface AgentDef {
 	id: AgentId;
@@ -33,7 +41,11 @@ export const AGENTS: Record<AgentId, AgentDef> = {
 			"Base questions on supplied documents or course knowledge when present and say which part they come from.",
 			QUESTION_BLOCK,
 		].join(" \n"),
-		followUps: ["Make these harder", "Add answer explanations", "Turn this into a full exam blueprint"],
+		followUps: [
+			"Make these harder",
+			"Add answer explanations",
+			"Turn this into a full exam blueprint",
+		],
 	},
 	integrity: {
 		id: "integrity",
@@ -48,7 +60,11 @@ export const AGENTS: Record<AgentId, AgentDef> = {
 			"(e.g. watch recording at mm:ss, invite the student to explain). Use a risk band (Low/Moderate/Elevated) — never a verdict.",
 			"Incident reports use sections: Summary, Session details, Timeline, Evidence assessment, Alternative explanations, Recommended next steps, Reviewer sign-off (blank).",
 		].join(" \n"),
-		followUps: ["Reconstruct the timeline", "What are possible innocent explanations?", "Draft an incident report for review"],
+		followUps: [
+			"Reconstruct the timeline",
+			"What are possible innocent explanations?",
+			"Draft an incident report for review",
+		],
 	},
 	analytics: {
 		id: "analytics",
@@ -60,7 +76,11 @@ export const AGENTS: Record<AgentId, AgentDef> = {
 			"Answer natural-language dashboard requests (e.g. 'students with more than three alerts', 'bottom 10 students') precisely as a markdown table from the data.",
 			"Use only numbers present in the data; say when grading is still pending. Keep reports skimmable: headline, key findings, table(s), recommendations.",
 		].join(" \n"),
-		followUps: ["Which questions were hardest and why?", "Compare sections", "Generate a performance report"],
+		followUps: [
+			"Which questions were hardest and why?",
+			"Compare sections",
+			"Generate a performance report",
+		],
 	},
 	grading: {
 		id: "grading",
@@ -72,7 +92,11 @@ export const AGENTS: Record<AgentId, AgentDef> = {
 			"When suggesting marks: give marks per criterion with a one-line justification each, the total, your confidence, and what would earn the missing marks.",
 			"Suggested marks are advisory — the faculty member makes the final decision. Never invent a rubric silently: if none is given, propose one first and label it 'proposed'.",
 		].join(" \n"),
-		followUps: ["Make the rubric stricter", "Write a model answer", "Grade this answer against the rubric"],
+		followUps: [
+			"Make the rubric stricter",
+			"Write a model answer",
+			"Grade this answer against the rubric",
+		],
 	},
 	document: {
 		id: "document",
@@ -84,7 +108,11 @@ export const AGENTS: Record<AgentId, AgentDef> = {
 			"Quote or cite the slide/page/section you used. If text looks garbled from OCR, say so.",
 			QUESTION_BLOCK,
 		].join(" \n"),
-		followUps: ["Extract all questions from the document", "Find duplicate questions", "Build a question bank by topic"],
+		followUps: [
+			"Extract all questions from the document",
+			"Find duplicate questions",
+			"Build a question bank by topic",
+		],
 	},
 	academic: {
 		id: "academic",
@@ -96,7 +124,11 @@ export const AGENTS: Record<AgentId, AgentDef> = {
 			"instructions and messages to students that are clear, kind and specific (date, time, duration, allowed materials, proctoring rules, support contact).",
 			"For readiness, list blockers first, then risks, then recommendations, referencing the actual configuration.",
 		].join(" \n"),
-		followUps: ["Is this exam ready to publish?", "Simulate the student experience", "Draft an exam announcement"],
+		followUps: [
+			"Is this exam ready to publish?",
+			"Simulate the student experience",
+			"Draft an exam announcement",
+		],
 	},
 };
 
@@ -110,11 +142,26 @@ export interface RoutePlan {
 }
 
 const RULES: { agent: AgentId; re: RegExp }[] = [
-	{ agent: "integrity", re: /\b(integrity|proctor|alert|suspicious|cheat|misconduct|violation|incident|timeline|gaze|tab[- ]?switch|false positive|evidence|risk)\b/i },
-	{ agent: "analytics", re: /\b(performance|analy[sz]|average|mean|median|pass rate|distribution|weak|hardest|difficult questions|compare (class|section)|report on results|scores?|dashboard|show (me )?students|top \d+|bottom \d+)\b/i },
-	{ agent: "grading", re: /\b(rubric|grade|grading|marking scheme|model answer|evaluate (this|the) answer|marks? for)\b/i },
-	{ agent: "academic", re: /\b(syllabus|learning outcome|course outcome|readiness|ready to publish|simulat|announcement|instructions for students|notice)\b/i },
-	{ agent: "question", re: /\b(question|mcq|quiz|paper|blueprint|bloom|distractor|coding problem|fill in the blank|true\/false)\b/i },
+	{
+		agent: "integrity",
+		re: /\b(integrity|proctor|alert|suspicious|cheat|misconduct|violation|incident|timeline|gaze|tab[- ]?switch|false positive|evidence|risk)\b/i,
+	},
+	{
+		agent: "analytics",
+		re: /\b(performance|analy[sz]|average|mean|median|pass rate|distribution|weak|hardest|difficult questions|compare (class|section)|report on results|scores?|dashboard|show (me )?students|top \d+|bottom \d+)\b/i,
+	},
+	{
+		agent: "grading",
+		re: /\b(rubric|grade|grading|marking scheme|model answer|evaluate (this|the) answer|marks? for)\b/i,
+	},
+	{
+		agent: "academic",
+		re: /\b(syllabus|learning outcome|course outcome|readiness|ready to publish|simulat|announcement|instructions for students|notice)\b/i,
+	},
+	{
+		agent: "question",
+		re: /\b(question|mcq|quiz|paper|blueprint|bloom|distractor|coding problem|fill in the blank|true\/false)\b/i,
+	},
 ];
 
 function ruleNeeds(agent: AgentId, text: string): DataNeed[] {
@@ -125,7 +172,8 @@ function ruleNeeds(agent: AgentId, text: string): DataNeed[] {
 	if (agent === "academic") needs.add("overview");
 	if (/\b(live|right now|ongoing|currently|in progress)\b/.test(t)) needs.add("live");
 	if (/\b(similar|plagiar|copied|collusion)\b/.test(t)) needs.add("similarity");
-	if (/\b(review|quality|my (exam|paper|questions))\b/.test(t) && agent === "question") needs.add("overview");
+	if (/\b(review|quality|my (exam|paper|questions))\b/.test(t) && agent === "question")
+		needs.add("overview");
 	if (/\b(syllabus|course material|from (my|the) course)\b/.test(t)) needs.add("course");
 	if (/\b(my (assessments|exams)|which exams|list)\b/.test(t)) needs.add("list");
 	return [...needs];
@@ -175,12 +223,29 @@ export async function planTurn(input: {
 			},
 		],
 	});
-	const parsed = parseJsonReply<{ agent?: string; assessment?: string | null; student?: string | null; needs?: string[]; title?: string }>(reply);
-	const validNeeds: DataNeed[] = ["overview", "performance", "integrity", "student", "live", "similarity", "course", "list"];
+	const parsed = parseJsonReply<{
+		agent?: string;
+		assessment?: string | null;
+		student?: string | null;
+		needs?: string[];
+		title?: string;
+	}>(reply);
+	const validNeeds: DataNeed[] = [
+		"overview",
+		"performance",
+		"integrity",
+		"student",
+		"live",
+		"similarity",
+		"course",
+		"list",
+	];
 	if (parsed?.agent && parsed.agent in AGENTS) {
 		const agent = parsed.agent as AgentId;
-		const needs = new Set((parsed.needs ?? []).filter((n): n is DataNeed => validNeeds.includes(n as DataNeed)));
-		ruleNeeds(agent, input.message).forEach((n) => needs.add(n));
+		const needs = new Set(
+			(parsed.needs ?? []).filter((n): n is DataNeed => validNeeds.includes(n as DataNeed)),
+		);
+		for (const n of ruleNeeds(agent, input.message)) needs.add(n);
 		if (parsed.student) needs.add("student");
 		return {
 			agent,
@@ -192,7 +257,9 @@ export async function planTurn(input: {
 		};
 	}
 	// Rule-based fallback (model unavailable or unparseable).
-	const agent: AgentId = input.hasAttachments ? "document" : (RULES.find((r) => r.re.test(input.message))?.agent ?? "question");
+	const agent: AgentId = input.hasAttachments
+		? "document"
+		: (RULES.find((r) => r.re.test(input.message))?.agent ?? "question");
 	return {
 		agent,
 		assessmentRef: null,

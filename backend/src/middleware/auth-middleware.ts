@@ -2,9 +2,9 @@ import { fromNodeHeaders } from "better-auth/node";
 import type { NextFunction, Request, Response } from "express";
 import { HTTP_STATUS } from "@/constants/http-status";
 import { prisma } from "@/database";
+import { isTwoFactorPending } from "@/features/authentication/services/two-factor-service";
 import { auth } from "@/providers/auth";
 import { AppError } from "@/utils/app-error";
-import { isTwoFactorPending } from "@/features/authentication/services/two-factor-service";
 
 // Extend Express Request interface
 declare global {
@@ -32,7 +32,10 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
 		}
 		// Password accepted, but the emailed 2FA code hasn't been entered yet.
 		if (isTwoFactorPending(sessionData)) {
-			throw new AppError("Two-step verification required. Enter the code sent to your email.", HTTP_STATUS.UNAUTHORIZED);
+			throw new AppError(
+				"Two-step verification required. Enter the code sent to your email.",
+				HTTP_STATUS.UNAUTHORIZED,
+			);
 		}
 
 		const dbUser = await prisma.user.findUnique({
@@ -79,11 +82,13 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
 		req.user = dbUser;
 		req.session = sessionData.session;
 		next();
-	} catch (err: any) {
+	} catch (err) {
 		if (err instanceof AppError) {
-			return next(err);
+			next(err);
+			return;
 		}
-		return next(new AppError("Unauthorized: Invalid session", HTTP_STATUS.UNAUTHORIZED));
+		next(new AppError("Unauthorized: Invalid session", HTTP_STATUS.UNAUTHORIZED));
+		return;
 	}
 }
 
@@ -106,16 +111,18 @@ export function requireRole(...roles: string[]) {
 	return (req: Request, _res: Response, next: NextFunction): void => {
 		const user = req.user;
 		if (!user) {
-			return next(new AppError("Unauthorized: Authentication required", HTTP_STATUS.UNAUTHORIZED));
+			next(new AppError("Unauthorized: Authentication required", HTTP_STATUS.UNAUTHORIZED));
+			return;
 		}
 
 		if (!roles.includes(user.role)) {
-			return next(
+			next(
 				new AppError(
 					`Forbidden: Insufficient privileges. Required role: ${roles.join(" or ")}`,
 					HTTP_STATUS.FORBIDDEN,
 				),
 			);
+			return;
 		}
 
 		next();
@@ -162,19 +169,21 @@ export function rateLimiter(options: RateLimitOptions) {
 				count: 1,
 				resetTime: now + options.windowMs,
 			});
-			return next();
+			next();
+			return;
 		}
 
 		record.count += 1;
 		if (record.count > options.maxRequests) {
 			const remainingSecs = Math.ceil((record.resetTime - now) / 1000);
-			return next(
+			next(
 				new AppError(
 					options.message ||
 						`Too many requests from this IP. Please try again in ${remainingSecs} seconds.`,
 					HTTP_STATUS.TOO_MANY_REQUESTS,
 				),
 			);
+			return;
 		}
 
 		next();

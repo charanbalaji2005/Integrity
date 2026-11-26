@@ -29,7 +29,9 @@ export function departmentPrefix(department: string | null | undefined): string 
  * department is known.
  */
 export function canonicalSection(raw: unknown, department?: string | null): string | null {
-	const s = String(raw ?? "").trim().toUpperCase();
+	const s = String(raw ?? "")
+		.trim()
+		.toUpperCase();
 	if (!s) return null;
 	if (SECTION_CODE_RE.test(s)) return s;
 	const spaced = s.match(/^([A-Z]{2,4})[\s_]*-?[\s_]*([A-Z])$/);
@@ -47,7 +49,10 @@ export function resolveStudentSection(raw: unknown, department?: string | null):
 	const code = canonicalSection(raw, department);
 	if (!code) {
 		const prefix = departmentPrefix(department) ?? "CSE";
-		throw new AppError(`Invalid section "${String(raw).trim()}". Use the format ${prefix}-A, ${prefix}-B, …`, HTTP_STATUS.BAD_REQUEST);
+		throw new AppError(
+			`Invalid section "${String(raw).trim()}". Use the format ${prefix}-A, ${prefix}-B, …`,
+			HTTP_STATUS.BAD_REQUEST,
+		);
 	}
 	return code;
 }
@@ -55,5 +60,13 @@ export function resolveStudentSection(raw: unknown, department?: string | null):
 /** Faculty section list (array or comma string) with each entry resolved; validation stays in validateFacultySections. */
 export function canonicalSectionList(raw: unknown, department?: string | null): string[] {
 	const list = Array.isArray(raw) ? raw : String(raw ?? "").split(",");
-	return list.map((x) => canonicalSection(x, department) ?? String(x ?? "").trim().toUpperCase()).filter(Boolean);
+	return list
+		.map(
+			(x) =>
+				canonicalSection(x, department) ??
+				String(x ?? "")
+					.trim()
+					.toUpperCase(),
+		)
+		.filter(Boolean);
 }

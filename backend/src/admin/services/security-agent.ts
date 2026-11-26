@@ -1,7 +1,6 @@
 import { hashPassword } from "better-auth/crypto";
 import { prisma } from "@/database";
 import { getIO } from "@/providers/socket";
-import { AppError } from "@/utils/app-error";
 import { getPlatformState } from "./platform-state";
 
 // Risk Engine event values - Rule 11 & Rule 2/3/4/5/6/7/8/9/10

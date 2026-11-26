@@ -1,11 +1,26 @@
 import type { Prisma } from "@prisma/client";
-import { categoryLabel, moduleLabel, OPEN_STATUSES, REOPEN_WINDOW_DAYS, type TicketStatus } from "../support-constants";
+import {
+	categoryLabel,
+	moduleLabel,
+	OPEN_STATUSES,
+	REOPEN_WINDOW_DAYS,
+	type TicketStatus,
+} from "../support-constants";
 import { signedAttachmentUrl } from "./infra";
 
 export const detailInclude = {
-	messages: { orderBy: { createdAt: "asc" }, include: { attachments: { select: { id: true, fileName: true, mimeType: true, size: true } } } },
-	attachments: { where: { messageId: null }, select: { id: true, fileName: true, mimeType: true, size: true } },
-	assignments: { orderBy: { assignedAt: "desc" }, include: { staff: { include: { user: { select: { name: true } } } } } },
+	messages: {
+		orderBy: { createdAt: "asc" },
+		include: { attachments: { select: { id: true, fileName: true, mimeType: true, size: true } } },
+	},
+	attachments: {
+		where: { messageId: null },
+		select: { id: true, fileName: true, mimeType: true, size: true },
+	},
+	assignments: {
+		orderBy: { assignedAt: "desc" },
+		include: { staff: { include: { user: { select: { name: true } } } } },
+	},
 	aiAnalyses: { orderBy: { createdAt: "desc" }, take: 1 },
 	internalNotes: { orderBy: { createdAt: "asc" } },
 } satisfies Prisma.SupportTicketInclude;
@@ -30,18 +45,31 @@ export function isStaffRole(role: string): boolean {
 	return role === "support" || role === "admin";
 }
 
-function senderType(m: { senderRole: string; senderId: string; messageType: string }): "student" | "ai" | "agent" | "system" {
-	if (m.messageType === "system" || m.messageType === "handoff" || m.senderId === "system") return "system";
+function senderType(m: {
+	senderRole: string;
+	senderId: string;
+	messageType: string;
+}): "student" | "ai" | "agent" | "system" {
+	if (m.messageType === "system" || m.messageType === "handoff" || m.senderId === "system")
+		return "system";
 	if (m.senderRole === "ai") return "ai";
 	if (m.senderRole === "support" || m.senderRole === "admin") return "agent";
 	return "student";
 }
 
 function attachment(a: { id: string; fileName: string; mimeType: string; size: number }) {
-	return { id: a.id, fileName: a.fileName, mimeType: a.mimeType, size: a.size, url: signedAttachmentUrl(a.id) };
+	return {
+		id: a.id,
+		fileName: a.fileName,
+		mimeType: a.mimeType,
+		size: a.size,
+		url: signedAttachmentUrl(a.id),
+	};
 }
 
-export function toSummary(t: TicketBase & { messages?: Array<{ content: string; createdAt: Date }> }) {
+export function toSummary(
+	t: TicketBase & { messages?: Array<{ content: string; createdAt: Date }> },
+) {
 	const last = t.messages?.[t.messages.length - 1] ?? t.messages?.[0];
 	return {
 		id: t.id,
@@ -75,7 +103,11 @@ export function computePermissions(t: TicketWithDetail, viewer: Viewer) {
 	const isAssignee = t.assignedAgentId === viewer.id && t.ownershipType === "HUMAN";
 	const sup = viewer.isSupervisor;
 	return {
-		canAccept: open && (t.status === "unassigned" || (t.status === "pending_acceptance" && (offeredToMe || sup)) || (t.status === "escalated" && t.ownershipType === "AI")),
+		canAccept:
+			open &&
+			(t.status === "unassigned" ||
+				(t.status === "pending_acceptance" && (offeredToMe || sup)) ||
+				(t.status === "escalated" && t.ownershipType === "AI")),
 		canReassign: open && (isAssignee || sup || offeredToMe),
 		canResolve: open && (isAssignee || sup),
 		canEscalate: open && (isAssignee || sup),
@@ -95,7 +127,10 @@ export function toDetail(t: TicketWithDetail, viewer: Viewer) {
 		Boolean(resolvedAt && Date.now() - resolvedAt.getTime() < REOPEN_WINDOW_DAYS * 86_400_000);
 
 	const base = {
-		...toSummary({ ...t, messages: t.messages.map((m) => ({ content: m.content, createdAt: m.createdAt })) }),
+		...toSummary({
+			...t,
+			messages: t.messages.map((m) => ({ content: m.content, createdAt: m.createdAt })),
+		}),
 		description: t.description,
 		subcategory: t.subcategory,
 		severity: t.severity,
@@ -130,7 +165,8 @@ export function toDetail(t: TicketWithDetail, viewer: Viewer) {
 		score: a.assignmentScore,
 		reason: a.reassignmentReason,
 	});
-	const current = t.assignments.find((a) => a.status === "pending" || a.status === "accepted") ?? null;
+	const current =
+		t.assignments.find((a) => a.status === "pending" || a.status === "accepted") ?? null;
 	const ai = t.aiAnalyses[0];
 	let requiredExpertise: string[] = [];
 	try {
@@ -138,7 +174,9 @@ export function toDetail(t: TicketWithDetail, viewer: Viewer) {
 	} catch {
 		/* ignore */
 	}
-	const recommended = ai?.recommendedStaffId ? t.assignments.find((a) => a.staffId === ai.recommendedStaffId) : undefined;
+	const recommended = ai?.recommendedStaffId
+		? t.assignments.find((a) => a.staffId === ai.recommendedStaffId)
+		: undefined;
 	return {
 		...base,
 		assignment: current ? assignmentInfo(current) : null,
@@ -162,12 +200,28 @@ export function toDetail(t: TicketWithDetail, viewer: Viewer) {
 					createdAt: ai.createdAt.toISOString(),
 				}
 			: null,
-		internalNotes: t.internalNotes.map((n) => ({ id: n.id, staffId: n.staffId, staffName: n.staffName, content: n.content, kind: n.kind, createdAt: n.createdAt.toISOString() })),
+		internalNotes: t.internalNotes.map((n) => ({
+			id: n.id,
+			staffId: n.staffId,
+			staffName: n.staffName,
+			content: n.content,
+			kind: n.kind,
+			createdAt: n.createdAt.toISOString(),
+		})),
 		permissions: computePermissions(t, viewer),
 	};
 }
 
-export function messageToDto(m: { id: string; senderRole: string; senderId: string; senderName: string; content: string; messageType: string; createdAt: Date; attachments?: Array<{ id: string; fileName: string; mimeType: string; size: number }> }) {
+export function messageToDto(m: {
+	id: string;
+	senderRole: string;
+	senderId: string;
+	senderName: string;
+	content: string;
+	messageType: string;
+	createdAt: Date;
+	attachments?: Array<{ id: string; fileName: string; mimeType: string; size: number }>;
+}) {
 	return {
 		id: m.id,
 		senderType: senderType(m),

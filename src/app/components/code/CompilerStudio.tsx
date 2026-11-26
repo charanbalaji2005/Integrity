@@ -13,11 +13,13 @@ import {
   Loader2,
   MemoryStick,
   Minus,
+  Moon,
   Pencil,
   Play,
   Plus,
   RefreshCw,
   RotateCcw,
+  Sun,
   Trash2,
   Upload,
   WifiOff,
@@ -131,6 +133,21 @@ export function CompilerStudio({ userId }: { userId: string }) {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [fontSize, setFontSize] = useState(14);
   const [wrap, setWrap] = useState(false);
+  // Light (white) by default; the choice is remembered in this browser.
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    try {
+      return localStorage.getItem("compiler-studio:theme") === "dark" ? "dark" : "light";
+    } catch {
+      return "light";
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("compiler-studio:theme", theme);
+    } catch {
+      /* storage unavailable */
+    }
+  }, [theme]);
   const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -300,9 +317,10 @@ export function CompilerStudio({ userId }: { userId: string }) {
 
   if (!active) return null;
   const accent = ACCENT[active.language];
+  const toggleTheme = () => setTheme((t) => (t === "light" ? "dark" : "light"));
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[#111113] text-zinc-100">
+    <div className={`compiler-studio ${theme === "light" ? "cs-light" : ""} flex h-full min-h-0 flex-col bg-[var(--cs-bg)] text-zinc-100`}>
       {/* ── Top bar ── */}
       <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-zinc-800 px-4 py-2.5">
         <div className="flex items-center gap-2 pr-2">
@@ -311,7 +329,7 @@ export function CompilerStudio({ userId }: { userId: string }) {
           </span>
           <div className="leading-tight">
             <div className="text-[14px] font-bold">Compiler Studio</div>
-            <div className="text-[11px] text-zinc-400">Practice in a secure sandbox</div>
+            <div className="text-[11px] text-zinc-400">C · C++ · Python · Java</div>
           </div>
         </div>
 
@@ -341,6 +359,15 @@ export function CompilerStudio({ userId }: { userId: string }) {
         <div className="ml-auto flex items-center gap-2">
           <button
             type="button"
+            onClick={toggleTheme}
+            title={theme === "light" ? "Switch to dark theme" : "Switch to light theme"}
+            aria-label={theme === "light" ? "Switch to dark theme" : "Switch to light theme"}
+            className="inline-flex size-9 items-center justify-center rounded-lg border border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+          >
+            {theme === "light" ? <Moon className="size-4" /> : <Sun className="size-4" />}
+          </button>
+          <button
+            type="button"
             onClick={() => void refreshHealth()}
             title={health?.error ?? (online ? `Compiler engine: ${health?.version ?? "ready"}` : "Compiler service offline")}
             className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
@@ -366,7 +393,7 @@ export function CompilerStudio({ userId }: { userId: string }) {
             onClick={() => void run("run")}
             disabled={!!running}
             className="inline-flex h-9 items-center gap-1.5 rounded-lg px-4 text-[12.5px] font-bold text-zinc-950 shadow-sm transition hover:brightness-110 disabled:opacity-60"
-            style={{ background: "#34d399" }}
+            style={{ background: "#34d399", color: "#052e16" }}
             title="Run (Ctrl+Enter)"
           >
             {running === "run" ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4 fill-current" />}
@@ -380,7 +407,7 @@ export function CompilerStudio({ userId }: { userId: string }) {
           <WifiOff className="mt-0.5 size-3.5 shrink-0" />
           <span className="min-w-0 flex-1">
             The compiler service isn’t reachable{health?.error ? ` — ${health.error}` : ""}. You can keep writing; your files are saved in this browser.
-            Administrators: set <code className="rounded bg-black/30 px-1">CODE_EXECUTOR=local</code> in <code className="rounded bg-black/30 px-1">backend/.env</code> to use this machine’s compilers, then restart the backend.
+            Administrators: set <code className="rounded bg-zinc-950/40 px-1">CODE_EXECUTOR=local</code> in <code className="rounded bg-zinc-950/40 px-1">backend/.env</code> to use this machine’s compilers, then restart the backend.
           </span>
           <button type="button" onClick={() => void refreshHealth()} className="inline-flex items-center gap-1 font-semibold underline-offset-2 hover:underline">
             <RefreshCw className="size-3" /> Retry
@@ -390,7 +417,7 @@ export function CompilerStudio({ userId }: { userId: string }) {
 
       <div className="flex min-h-0 flex-1">
         {/* ── Files ── */}
-        <aside className="hidden w-60 shrink-0 flex-col border-r border-zinc-800 bg-[#0d0d0f] md:flex" aria-label="Files">
+        <aside className="hidden w-60 shrink-0 flex-col border-r border-zinc-800 bg-[var(--cs-deep)] md:flex" aria-label="Files">
           <div className="flex items-center justify-between px-3 pb-1 pt-3">
             <span className="text-[10.5px] font-bold uppercase tracking-wider text-zinc-500">Files</span>
             <div className="flex">
@@ -470,7 +497,7 @@ export function CompilerStudio({ userId }: { userId: string }) {
         {/* ── Editor + IO ── */}
         <div className="flex min-w-0 flex-1 flex-col lg:flex-row">
           <section className="flex min-h-[320px] min-w-0 flex-1 flex-col" aria-label="Editor">
-            <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 bg-[#151518] px-3 py-1.5">
+            <div className="flex shrink-0 items-center gap-2 border-b border-zinc-800 bg-[var(--cs-panel)] px-3 py-1.5">
               <span className="inline-flex items-center gap-1.5 rounded-md bg-zinc-800 px-2 py-0.5 text-[12px] font-medium">
                 <span className="size-2 rounded-full" style={{ background: accent }} /> {active.name}
               </span>
@@ -501,12 +528,13 @@ export function CompilerStudio({ userId }: { userId: string }) {
               </div>
             </div>
             {showShortcuts && (
-              <div className="shrink-0 border-b border-zinc-800 bg-[#151518] px-3 py-2 text-[11.5px] text-zinc-400">
+              <div className="shrink-0 border-b border-zinc-800 bg-[var(--cs-panel)] px-3 py-2 text-[11.5px] text-zinc-400">
                 <b className="text-zinc-200">Ctrl+Enter</b> run · <b className="text-zinc-200">Ctrl+Shift+Enter</b> compile only · <b className="text-zinc-200">Ctrl+S</b> save · <b className="text-zinc-200">Ctrl+F</b> find · <b className="text-zinc-200">Ctrl+/</b> comment · <b className="text-zinc-200">Alt+↑/↓</b> move line · double-click a file to rename
               </div>
             )}
             <div className="min-h-0 flex-1">
               <CodeEditor
+                theme={theme}
                 key={active.id}
                 value={active.code}
                 onChange={(code) => patchActive({ code })}
@@ -521,7 +549,7 @@ export function CompilerStudio({ userId }: { userId: string }) {
             </div>
           </section>
 
-          <aside className="flex min-h-0 w-full shrink-0 flex-col gap-3 border-t border-zinc-800 bg-[#0d0d0f] p-3 lg:w-[400px] lg:border-l lg:border-t-0 xl:w-[460px]" aria-label="Input and output">
+          <aside className="flex min-h-0 w-full shrink-0 flex-col gap-3 border-t border-zinc-800 bg-[var(--cs-deep)] p-3 lg:w-[400px] lg:border-l lg:border-t-0 xl:w-[460px]" aria-label="Input and output">
             <div className="flex shrink-0 flex-col gap-1.5">
               <label htmlFor="studio-stdin" className="text-[10.5px] font-bold uppercase tracking-wider text-zinc-500">
                 Input (stdin)
@@ -561,7 +589,7 @@ export function CompilerStudio({ userId }: { userId: string }) {
               <CodingOutputPanel execution={execution} running={running} elapsedMs={elapsed} tab={outputTab} onTab={setOutputTab} />
             </div>
             <p className="shrink-0 text-[10.5px] leading-snug text-zinc-600">
-              Code runs in an isolated sandbox with no network access · 5 s time limit · 256 MB memory · files are saved only in this browser.
+              Compiled and run with GCC, the JDK and Python on the server · 5 s time limit · files are saved only in this browser.
             </p>
           </aside>
         </div>

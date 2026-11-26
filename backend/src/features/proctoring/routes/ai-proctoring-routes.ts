@@ -1,5 +1,6 @@
 import { type IRouter, Router } from "express";
 import { requireAuth, requireRole } from "../../../middleware/auth-middleware";
+import { requireDesktopDevice } from "../../../utils/device";
 import {
 	calibrateSession,
 	endSession,
@@ -12,7 +13,6 @@ import {
 	processFrame,
 	startSession,
 } from "../controllers/ai-proctoring-controller";
-import { requireDesktopDevice } from "../../../utils/device";
 
 const router: IRouter = Router();
 

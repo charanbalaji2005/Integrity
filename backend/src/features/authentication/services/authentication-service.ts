@@ -1,17 +1,18 @@
-import { MULTI_PORTAL_EMAILS } from "../../../utils/multi-portal";
 import { prisma } from "@/database";
 import { auth, isAuthorizedInstitutionalEmail } from "@/providers/auth";
 import { sendEmail } from "@/services/mail";
 import { AppError } from "@/utils/app-error";
+import { errorMessage } from "@/utils/error-message";
 import { validateFacultySections } from "@/utils/faculty-sections";
 import { canonicalSectionList, resolveStudentSection } from "@/utils/section-codes";
-import { issueCode } from "./two-factor-service";
+import { MULTI_PORTAL_EMAILS } from "../../../utils/multi-portal";
 import type {
 	ForgotPasswordPayload,
 	LoginPayload,
 	LoginResult,
 	MagicLinkPayload,
 } from "../types/authentication.types";
+import { issueCode } from "./two-factor-service";
 
 /**
  * Send 6-digit registration OTP to student/user university email
@@ -93,7 +94,8 @@ export async function verifyRegisterOtp(email: string, otp: string): Promise<voi
 
 	const [storedOtp, attemptsStr] = record.value.split(":");
 	const attempts = parseInt(attemptsStr || "0", 10);
-	const isValidOtp = storedOtp === otp || (process.env.NODE_ENV !== "production" && otp === "123456");
+	const isValidOtp =
+		storedOtp === otp || (process.env.NODE_ENV !== "production" && otp === "123456");
 
 	if (!isValidOtp) {
 		const newAttempts = attempts + 1;
@@ -224,16 +226,29 @@ export async function loginWithEmailPassword(
 		// session hook in providers/auth.ts); email the code it needs.
 		let twoFactor: LoginResult["twoFactor"];
 		if (dbUser?.twoFactorEnabled) {
-			const pending = await prisma.session.findUnique({ where: { token: result.token }, select: { id: true } });
-			if (!pending) throw new AppError("Could not start two-step verification. Please sign in again.", 500);
+			const pending = await prisma.session.findUnique({
+				where: { token: result.token },
+				select: { id: true },
+			});
+			if (!pending)
+				throw new AppError("Could not start two-step verification. Please sign in again.", 500);
 			try {
-				const sent = await issueCode({ userId: dbUser.id, email: dbUser.email, purpose: "login", sessionKey: pending.id, ip: ipAddress });
+				const sent = await issueCode({
+					userId: dbUser.id,
+					email: dbUser.email,
+					purpose: "login",
+					sessionKey: pending.id,
+					ip: ipAddress,
+				});
 				twoFactor = { required: true, ...sent };
 			} catch (err) {
 				// Never leave a half-signed-in session behind if the code can't be sent.
 				await prisma.session.delete({ where: { id: pending.id } }).catch(() => {});
 				if (err instanceof AppError) throw err;
-				throw new AppError("We couldn't email your verification code. Please try again in a minute.", 503);
+				throw new AppError(
+					"We couldn't email your verification code. Please try again in a minute.",
+					503,
+				);
 			}
 		}
 
@@ -259,7 +274,7 @@ export async function loginWithEmailPassword(
 				expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days fallback
 			},
 		};
-	} catch (err: any) {
+	} catch (err) {
 		if (existingUser) {
 			const attempts = existingUser.failedLoginAttempts + 1;
 			const shouldLock = attempts >= 5;
@@ -303,8 +318,10 @@ export async function requestPasswordReset(
 				redirectTo: `${origin}`,
 			},
 		});
-	} catch (err: any) {
-		const message = String(err?.message || err?.body?.message || "").toLowerCase();
+	} catch (err) {
+		// better-auth APIError carries the reason in body.message
+		const bodyMessage = (err as { body?: { message?: unknown } } | null)?.body?.message;
+		const message = String(errorMessage(err, "") || bodyMessage || "").toLowerCase();
 		const isUserNotFound = message.includes("user not found") || message.includes("no user");
 
 		if (isUserNotFound) {
@@ -360,7 +377,9 @@ export async function getGoogleOAuthURL(params: {
 		throw new AppError("Failed to generate Google OAuth URL", 500);
 	}
 	const setCookies =
-		typeof (headers as Headers).getSetCookie === "function" ? (headers as Headers).getSetCookie() : [];
+		typeof (headers as Headers).getSetCookie === "function"
+			? (headers as Headers).getSetCookie()
+			: [];
 	return { url, setCookies };
 }
 
@@ -445,7 +464,8 @@ export async function verifyPasswordResetOtp(email: string, otp: string): Promis
 	const storedOtp = parts[0];
 	const betterAuthToken = parts[1];
 	const attempts = parseInt(parts[2] || "0", 10);
-	const isValidOtp = storedOtp === otp || (process.env.NODE_ENV !== "production" && otp === "123456");
+	const isValidOtp =
+		storedOtp === otp || (process.env.NODE_ENV !== "production" && otp === "123456");
 
 	if (!storedOtp || !betterAuthToken || !isValidOtp) {
 		const newAttempts = attempts + 1;

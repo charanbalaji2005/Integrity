@@ -1,6 +1,9 @@
 import { type IRouter, type NextFunction, type Request, type Response, Router } from "express";
 import { requireAuth, requireRole } from "@/middleware/auth-middleware";
-import { listFeedbackHandler, submitFeedbackHandler } from "../controllers/exam-feedback-controller";
+import {
+	listFeedbackHandler,
+	submitFeedbackHandler,
+} from "../controllers/exam-feedback-controller";
 
 type Handler = (req: Request, res: Response) => Promise<void>;
 const wrap = (fn: Handler) => (req: Request, res: Response, next: NextFunction) => {

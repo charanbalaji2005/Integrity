@@ -1,12 +1,7 @@
 import { z } from "zod";
 
 export const loginSchema = z.object({
-	email: z
-		.string()
-		.min(1, "Email is required")
-		.email("Invalid email address")
-		.toLowerCase()
-		.trim(),
+	email: z.string().min(1, "Email is required").email("Invalid email address").toLowerCase().trim(),
 
 	password: z
 		.string()
@@ -19,43 +14,20 @@ export const loginSchema = z.object({
 });
 
 export const forgotPasswordSchema = z.object({
-	email: z
-		.string()
-		.min(1, "Email is required")
-		.email("Invalid email address")
-		.toLowerCase()
-		.trim(),
+	email: z.string().min(1, "Email is required").email("Invalid email address").toLowerCase().trim(),
 });
 
 export const magicLinkSchema = z.object({
-	email: z
-		.string()
-		.min(1, "Email is required")
-		.email("Invalid email address")
-		.toLowerCase()
-		.trim(),
+	email: z.string().min(1, "Email is required").email("Invalid email address").toLowerCase().trim(),
 });
 
 export const sendRegisterOtpSchema = z.object({
-	email: z
-		.string()
-		.min(1, "Email is required")
-		.email("Invalid email address")
-		.toLowerCase()
-		.trim(),
+	email: z.string().min(1, "Email is required").email("Invalid email address").toLowerCase().trim(),
 });
 
 export const verifyRegisterOtpSchema = z.object({
-	email: z
-		.string()
-		.min(1, "Email is required")
-		.email("Invalid email address")
-		.toLowerCase()
-		.trim(),
-	otp: z
-		.string()
-		.length(6, "Verification code must be 6 digits")
-		.trim(),
+	email: z.string().min(1, "Email is required").email("Invalid email address").toLowerCase().trim(),
+	otp: z.string().length(6, "Verification code must be 6 digits").trim(),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;

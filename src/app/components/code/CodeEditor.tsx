@@ -31,10 +31,12 @@ export interface CodeEditorProps {
   errorLines?: number[];
   className?: string;
   ariaLabel?: string;
+  /** Monaco theme; defaults to the dark exam theme. */
+  theme?: "dark" | "light";
 }
 
 /** Dark Monaco editor used by the student exam workspace and the faculty review screen. */
-export function CodeEditor({ value, onChange, language, readOnly, height = "100%", onMount, errorLines, className, ariaLabel }: CodeEditorProps) {
+export function CodeEditor({ value, onChange, language, readOnly, height = "100%", onMount, errorLines, className, ariaLabel, theme = "dark" }: CodeEditorProps) {
   const editorRef = React.useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const decorations = React.useRef<monaco.editor.IEditorDecorationsCollection | null>(null);
 
@@ -56,13 +58,13 @@ export function CodeEditor({ value, onChange, language, readOnly, height = "100%
       <Editor
         value={value}
         language={language === "c" ? "cpp" : language}
-        theme="vs-dark"
+        theme={theme === "light" ? "vs" : "vs-dark"}
         onChange={(v) => onChange?.(v ?? "")}
         onMount={(ed, m) => {
           editorRef.current = ed;
           onMount?.(ed, m);
         }}
-        loading={<div className="h-full w-full flex items-center justify-center text-xs text-zinc-400 bg-[#1e1e1e]">Loading editor…</div>}
+        loading={<div className={`h-full w-full flex items-center justify-center text-xs text-zinc-400 ${theme === "light" ? "bg-white" : "bg-[#1e1e1e]"}`}>Loading editor…</div>}
         options={{
           readOnly,
           ariaLabel: ariaLabel ?? "Code editor",

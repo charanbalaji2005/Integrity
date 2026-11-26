@@ -27,7 +27,8 @@ function singleDocument(req: Request, res: Response, next: NextFunction) {
 	upload.single("document")(req, res, (err: unknown) => {
 		if (!err) return next();
 		if (err instanceof multer.MulterError) {
-			const msg = err.code === "LIMIT_FILE_SIZE" ? "File is larger than 10 MB." : "Upload a single document.";
+			const msg =
+				err.code === "LIMIT_FILE_SIZE" ? "File is larger than 10 MB." : "Upload a single document.";
 			return next(new AppError(msg, HTTP_STATUS.BAD_REQUEST));
 		}
 		next(err);

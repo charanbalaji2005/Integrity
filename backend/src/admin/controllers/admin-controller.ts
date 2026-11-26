@@ -5,8 +5,8 @@ import { prisma } from "@/database";
 import { getIO } from "@/providers/socket";
 import { AppError } from "@/utils/app-error";
 import { validateFacultySections } from "@/utils/faculty-sections";
-import { canonicalSectionList, resolveStudentSection } from "@/utils/section-codes";
 import { sendSuccess } from "@/utils/response";
+import { canonicalSectionList, resolveStudentSection } from "@/utils/section-codes";
 import * as adminService from "../services/admin-service";
 import {
 	getPlatformState,
@@ -21,7 +21,7 @@ function assertNotOtherAdmin(target: { id: string; role: string }, actor: { id: 
 	}
 }
 
-export async function getUsersHandler(req: Request, res: Response) {
+export async function getUsersHandler(_req: Request, res: Response) {
 	const users = await adminService.getAllUsers();
 	sendSuccess(res, users, "Users retrieved successfully", HTTP_STATUS.OK);
 }
@@ -213,7 +213,7 @@ export async function updateUserRoleHandler(req: Request, res: Response) {
 	sendSuccess(res, null, "User role updated successfully", HTTP_STATUS.OK);
 }
 
-export async function getSettingsHandler(req: Request, res: Response) {
+export async function getSettingsHandler(_req: Request, res: Response) {
 	const state = getPlatformState();
 	sendSuccess(res, state, "Platform settings retrieved successfully", HTTP_STATUS.OK);
 }
@@ -266,7 +266,7 @@ export async function updateSettingsHandler(req: Request, res: Response) {
 	sendSuccess(res, state, "Platform settings updated successfully", HTTP_STATUS.OK);
 }
 
-export async function getSystemHealthHandler(req: Request, res: Response) {
+export async function getSystemHealthHandler(_req: Request, res: Response) {
 	// Real DB metrics
 	const startTime = Date.now();
 	await prisma.$queryRaw`SELECT 1`;
@@ -297,7 +297,7 @@ export async function getSystemHealthHandler(req: Request, res: Response) {
 	sendSuccess(res, healthData, "System health retrieved successfully", HTTP_STATUS.OK);
 }
 
-export async function getAgentStatusHandler(req: Request, res: Response) {
+export async function getAgentStatusHandler(_req: Request, res: Response) {
 	// Query real data to compute agent statuses
 	const totalAttempts = await prisma.assessmentAttempt.count();
 	const gradedAttempts = await prisma.assessmentAttempt.count({ where: { status: "graded" } });
@@ -376,7 +376,7 @@ export async function getAgentStatusHandler(req: Request, res: Response) {
 	sendSuccess(res, agents, "AI Agent statuses retrieved successfully", HTTP_STATUS.OK);
 }
 
-export async function getAssessmentsComplianceHandler(req: Request, res: Response) {
+export async function getAssessmentsComplianceHandler(_req: Request, res: Response) {
 	const assessments = await prisma.assessment.findMany({
 		include: {
 			_count: {
@@ -422,7 +422,7 @@ export async function getAssessmentsComplianceHandler(req: Request, res: Respons
 }
 
 /** GET /api/admin/dashboard-stats — All statistics from PostgreSQL */
-export async function getDashboardStatsHandler(req: Request, res: Response) {
+export async function getDashboardStatsHandler(_req: Request, res: Response) {
 	const now = new Date();
 	const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 	const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -524,7 +524,7 @@ export async function getDashboardStatsHandler(req: Request, res: Response) {
 }
 
 /** GET /api/admin/live-sessions — Real active exam sessions from DB */
-export async function getLiveSessionsHandler(req: Request, res: Response) {
+export async function getLiveSessionsHandler(_req: Request, res: Response) {
 	const activeSessions = await prisma.assessmentAttempt.findMany({
 		where: { status: "started" },
 		include: {
@@ -550,7 +550,7 @@ export async function getLiveSessionsHandler(req: Request, res: Response) {
 }
 
 /** GET /api/admin/soc-alerts — Security alerts from real DB logs */
-export async function getSocAlertsHandler(req: Request, res: Response) {
+export async function getSocAlertsHandler(_req: Request, res: Response) {
 	// Recent security-relevant logs from UserLog
 	const logs = await prisma.userLog.findMany({
 		where: {
@@ -628,7 +628,7 @@ export async function getSocAlertsHandler(req: Request, res: Response) {
 	sendSuccess(res, alerts.slice(0, 30), "SOC alerts retrieved", HTTP_STATUS.OK);
 }
 
-export async function getAdminAuditLogsHandler(req: Request, res: Response) {
+export async function getAdminAuditLogsHandler(_req: Request, res: Response) {
 	// Fetch all admin logs from DB and self healing logs from platformState
 	const adminLogs = await prisma.userLog.findMany({
 		orderBy: { createdAt: "desc" },
@@ -941,7 +941,9 @@ export async function createFacultyHandler(req: Request, res: Response) {
 	}
 
 	// Faculty teach 1–3 sections; they will only see students from these.
-	const facultySections = validateFacultySections(canonicalSectionList(req.body.sections ?? req.body.section, department));
+	const facultySections = validateFacultySections(
+		canonicalSectionList(req.body.sections ?? req.body.section, department),
+	);
 
 	validatePasswordStrength(password);
 
@@ -1032,7 +1034,9 @@ export async function editUserHandler(req: Request, res: Response) {
 		rawSection === undefined
 			? undefined
 			: effectiveRole === "faculty"
-				? validateFacultySections(canonicalSectionList(rawSection, dataToUpdate.department ?? user.department))
+				? validateFacultySections(
+						canonicalSectionList(rawSection, dataToUpdate.department ?? user.department),
+					)
 				: resolveStudentSection(rawSection, dataToUpdate.department ?? user.department);
 
 	const updatedUser = await prisma.user.update({

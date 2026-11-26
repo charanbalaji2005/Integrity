@@ -17,20 +17,27 @@ const envSchema = z.object({
 
 	BETTER_AUTH_URL: z
 		.string()
-		.transform((val) => (val.startsWith("http://") || val.startsWith("https://") ? val : `https://${val}`))
+		.transform((val) =>
+			val.startsWith("http://") || val.startsWith("https://") ? val : `https://${val}`,
+		)
 		.pipe(z.string().url()),
 
 	GOOGLE_CLIENT_ID: z.string().min(1).optional(),
 
 	GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
 
+	/** Optional custom SMTP server; when unset, Gmail is used with SMTP_USER/SMTP_PASS. */
+	SMTP_HOST: z.string().optional(),
+	SMTP_PORT: z.coerce.number().int().min(1).max(65535).optional(),
 	SMTP_USER: z.string().optional().default("proctor@integrity.local"),
 
 	SMTP_PASS: z.string().optional().default("disabled"),
 
 	FRONTEND_URL: z
 		.string()
-		.transform((val) => (val.startsWith("http://") || val.startsWith("https://") ? val : `https://${val}`))
+		.transform((val) =>
+			val.startsWith("http://") || val.startsWith("https://") ? val : `https://${val}`,
+		)
 		.pipe(z.string().url()),
 
 	FACE_API_MODELS_PATH: z.string().default("src/features/proctoring/models"),

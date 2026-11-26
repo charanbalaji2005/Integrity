@@ -64,7 +64,7 @@ export async function deleteUser(userId: string) {
 }
 
 export async function logAdminAction(
-	adminUserId: string,
+	_adminUserId: string,
 	targetUserId: string,
 	action: string,
 	ipAddress?: string,

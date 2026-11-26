@@ -1,11 +1,11 @@
 import type { Request, Response } from "express";
-import { listFriends } from "../services/relationships";
 import { HTTP_STATUS } from "../../../constants/http-status";
 import { prisma } from "../../../database";
 import { getIO } from "../../../providers/socket";
 import { AppError } from "../../../utils/app-error";
 import { canSeeStudentSection, studentSectionWhere } from "../../../utils/faculty-sections";
 import { sendSuccess } from "../../../utils/response";
+import { listFriends } from "../services/relationships";
 
 function getAuthUser(req: Request) {
 	const user = req.user;
@@ -209,7 +209,7 @@ export async function getChatRequests(req: Request, res: Response): Promise<void
 	const userId = user.id;
 	const userRole = user.role;
 
-	let requests;
+	let requests: unknown[];
 
 	if (userRole === "faculty" || userRole === "admin") {
 		// Faculty sees incoming student requests
@@ -268,7 +268,7 @@ export async function createChatRequest(req: Request, res: Response): Promise<vo
 		where: { id: String(facultyId) },
 		select: { id: true, role: true, section: true },
 	});
-	if (!faculty || faculty.role !== "faculty") {
+	if (faculty?.role !== "faculty") {
 		throw new AppError("Faculty member not found", HTTP_STATUS.NOT_FOUND);
 	}
 	if (sender.role === "user" && !canSeeStudentSection(faculty, sender.section)) {
@@ -425,9 +425,38 @@ export async function reactToMessage(req: Request, res: Response): Promise<void>
 	sendSuccess(res, reactions, "Reaction toggled successfully", HTTP_STATUS.OK);
 }
 
+/**
+ * Whether a user may pin/unpin a message: the same access rules as reading it.
+ * Private chats: only the two participants. Class rooms: students of that
+ * section, faculty assigned to it, and admins. College channel: admins only
+ * (only admins can post there).
+ */
+export function canPinMessage(
+	user: { id: string; role: string; section?: string | null; department?: string | null },
+	message: {
+		type: string;
+		senderId: string;
+		recipientId?: string | null;
+		section?: string | null;
+		department?: string | null;
+	},
+): boolean {
+	if (message.type === "private")
+		return user.id === message.senderId || user.id === message.recipientId;
+	if (user.role === "admin") return true;
+	if (message.type === "class") {
+		const norm = (v?: string | null) => (v ?? "").trim().toUpperCase();
+		if (user.role === "faculty") return canSeeStudentSection(user, norm(message.section));
+		return (
+			norm(user.section) === norm(message.section) &&
+			norm(user.department) === norm(message.department)
+		);
+	}
+	return false;
+}
+
 export async function pinMessage(req: Request, res: Response): Promise<void> {
 	const user = getAuthUser(req);
-	const userId = user.id;
 	const messageId = req.params.id as string;
 
 	if (!messageId) {
@@ -437,6 +466,9 @@ export async function pinMessage(req: Request, res: Response): Promise<void> {
 	const message = await prisma.chatMessage.findUnique({ where: { id: messageId } });
 	if (!message) {
 		throw new AppError("Message not found", HTTP_STATUS.NOT_FOUND);
+	}
+	if (!canPinMessage(user, message)) {
+		throw new AppError("Forbidden: You cannot pin messages in this chat", HTTP_STATUS.FORBIDDEN);
 	}
 
 	const updatedMsg = await prisma.chatMessage.update({
@@ -458,7 +490,6 @@ export async function deleteMessage(req: Request, res: Response): Promise<void> 
 	const user = getAuthUser(req);
 	const userId = user.id;
 	const messageId = req.params.id as string;
-	const { deleteType } = req.body;
 
 	if (!messageId) {
 		throw new AppError("Invalid params", HTTP_STATUS.BAD_REQUEST);
@@ -473,37 +504,15 @@ export async function deleteMessage(req: Request, res: Response): Promise<void> 
 		throw new AppError("Forbidden: You do not own this message", HTTP_STATUS.FORBIDDEN);
 	}
 
-	let readBy: string[] = [];
-	if (message.readBy) {
-		try {
-			readBy = JSON.parse(message.readBy);
-		} catch {
-			readBy = [];
-		}
-	}
-
-	const hasRecipientRead = readBy.some((id) => id !== userId);
-
-	let updatedMsg;
-	if (deleteType === "everyone" && !hasRecipientRead) {
-		updatedMsg = await prisma.chatMessage.update({
-			where: { id: messageId },
-			data: {
-				isDeleted: true,
-				content: "This message was deleted.",
-				attachments: null,
-			},
-		});
-	} else {
-		updatedMsg = await prisma.chatMessage.update({
-			where: { id: messageId },
-			data: {
-				isDeleted: true,
-				content: "This message was deleted.",
-				attachments: null,
-			},
-		});
-	}
+	// Deleting soft-deletes the stored message for both participants.
+	const updatedMsg = await prisma.chatMessage.update({
+		where: { id: messageId },
+		data: {
+			isDeleted: true,
+			content: "This message was deleted.",
+			attachments: null,
+		},
+	});
 
 	const io = getIO();
 	io?.emit("message-update", {

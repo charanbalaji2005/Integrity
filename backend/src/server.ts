@@ -79,14 +79,18 @@ async function initialiseData() {
 	// Support Hub: built-in knowledge base + assignment engine (timeouts, queue).
 	const { ensureDefaultKnowledgeBase } = await import("./features/support/services/knowledge-base");
 	const { startAssignmentScheduler } = await import("./features/support/services/assignment");
-	await ensureDefaultKnowledgeBase().catch((err) => console.error("[Support] KB seed failed:", err));
+	await ensureDefaultKnowledgeBase().catch((err) =>
+		console.error("[Support] KB seed failed:", err),
+	);
 	startAssignmentScheduler();
 
 	// Vigil coding: poll the Judge0 sandbox for runs and process evaluation jobs.
 	const { startExecutionPoller } = await import("./features/coding/services/execution-service");
 	const { startEvaluationWorker } = await import("./features/coding/services/evaluation-service");
 	if (env.CODE_EXECUTOR === "local") {
-		const { applyLocalLanguageLabels, localToolchain } = await import("./features/coding/services/local-runner");
+		const { applyLocalLanguageLabels, localToolchain } = await import(
+			"./features/coding/services/local-runner"
+		);
 		applyLocalLanguageLabels();
 		const t = localToolchain();
 		console.warn(
@@ -126,7 +130,9 @@ function bootstrap() {
 	if (env.PRELOAD_ML_MODELS) {
 		preloadModels().catch((err) => console.error("[Bootstrap] Model preload failed:", err));
 	} else {
-		console.log("[Bootstrap] ML models will load on first use (set PRELOAD_ML_MODELS=true to preload).");
+		console.log(
+			"[Bootstrap] ML models will load on first use (set PRELOAD_ML_MODELS=true to preload).",
+		);
 	}
 }
 

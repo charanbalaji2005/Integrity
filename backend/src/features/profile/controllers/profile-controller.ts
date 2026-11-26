@@ -4,8 +4,8 @@ import { HTTP_STATUS } from "../../../constants/http-status";
 import { prisma } from "../../../database";
 import { AppError } from "../../../utils/app-error";
 import { validateFacultySections } from "../../../utils/faculty-sections";
-import { canonicalSectionList, resolveStudentSection } from "../../../utils/section-codes";
 import { sendSuccess } from "../../../utils/response";
+import { canonicalSectionList, resolveStudentSection } from "../../../utils/section-codes";
 import { assertToggleCode } from "../../authentication/controllers/two-factor-controller";
 
 import { verifyFace } from "../../proctoring/services/proctoring-service";
@@ -118,10 +118,10 @@ export async function updateProfile(req: Request, res: Response): Promise<void> 
 					HTTP_STATUS.BAD_REQUEST,
 				);
 			}
-		} catch (err: any) {
+		} catch (err) {
 			if (err instanceof AppError) throw err;
 			throw new AppError(
-				err.message || "Face verification engine failed.",
+				errorMessage(err, "Face verification engine failed."),
 				HTTP_STATUS.BAD_REQUEST,
 			);
 		}
@@ -190,6 +190,7 @@ export async function updateProfile(req: Request, res: Response): Promise<void> 
 	sendSuccess(res, updated, "Profile updated successfully", HTTP_STATUS.OK);
 }
 
+import { errorMessage } from "@/utils/error-message";
 import { validatePasswordStrength } from "@/utils/password-validator";
 
 /**
@@ -230,7 +231,7 @@ export async function changePassword(req: Request, res: Response): Promise<void>
 		where: { userId, providerId: "credential" },
 	});
 
-	if (!account || !account.password) {
+	if (!account?.password) {
 		throw new AppError("Credentials account not found for this user", HTTP_STATUS.NOT_FOUND);
 	}
 
@@ -354,7 +355,10 @@ export async function toggle2FA(req: Request, res: Response): Promise<void> {
 		throw new AppError("User not found", HTTP_STATUS.NOT_FOUND);
 	}
 	if (user.twoFactorEnabled === enabled) {
-		throw new AppError(enabled ? "Two-step verification is already on." : "Two-step verification is already off.", HTTP_STATUS.BAD_REQUEST);
+		throw new AppError(
+			enabled ? "Two-step verification is already on." : "Two-step verification is already off.",
+			HTTP_STATUS.BAD_REQUEST,
+		);
 	}
 	// The change must be confirmed with the code emailed by POST /api/profile/2fa/request,
 	// proving the inbox works before sign-in starts depending on it.

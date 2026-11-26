@@ -1,6 +1,7 @@
 import { fromNodeHeaders, toNodeHandler } from "better-auth/node";
 import cors from "cors";
 import express, { type Express } from "express";
+import { errorMessage } from "@/utils/error-message";
 import { adminRouter } from "./admin/routes/admin-routes";
 import { getPlatformState } from "./admin/services/platform-state";
 import { env } from "./config/env";
@@ -9,12 +10,12 @@ import { registerSwaggerDocs } from "./docs/swagger";
 import { answerSimilarityRouter } from "./features/answer-similarity/routes/answer-similarity-routes";
 import { assessmentRouter } from "./features/assessments/routes/assessment-routes";
 import { authenticationRouter } from "./features/authentication/routes/authentication-routes";
+import { isTwoFactorPending } from "./features/authentication/services/two-factor-service";
 import { chatRouter } from "./features/chat/routes/chat-routes";
+import { codingRouter } from "./features/coding/routes/coding-routes";
 import { courseRouter } from "./features/courses/routes/course-routes";
 import { examFeedbackRouter } from "./features/exam-feedback/routes/exam-feedback-routes";
 import { facultyAssistantRouter } from "./features/faculty-assistant/routes/faculty-assistant-routes";
-import { codingRouter } from "./features/coding/routes/coding-routes";
-import { isTwoFactorPending } from "./features/authentication/services/two-factor-service";
 import { healthRouter } from "./features/health/routes/health-routes";
 import { notificationRouter } from "./features/notifications/routes/notification-routes";
 import { plagiarismRouter } from "./features/plagiarism/routes/plagiarism-routes";
@@ -316,9 +317,9 @@ app.post("/api/auth/reset-password", express.json(), async (req, res, _next) => 
 		});
 
 		return res.json({ message: "Password updated successfully." });
-	} catch (err: any) {
+	} catch (err) {
 		console.error("Error in custom password reset interceptor:", err);
-		return res.status(500).json({ message: err.message || "Internal server error." });
+		return res.status(500).json({ message: errorMessage(err, "Internal server error.") });
 	}
 });
 
@@ -328,11 +329,12 @@ app.get("/api/auth/session", async (req, res) => {
 		const sessionData = await auth.api.getSession({
 			headers: new Headers(req.headers as any),
 		});
-		if (isTwoFactorPending(sessionData)) return res.json({ session: null, user: null, twoFactorRequired: true });
+		if (isTwoFactorPending(sessionData))
+			return res.json({ session: null, user: null, twoFactorRequired: true });
 		return res.json(sessionData);
-	} catch (err: any) {
+	} catch (err) {
 		console.error("Error in fallback session endpoint:", err);
-		return res.status(500).json({ message: err.message || "Internal server error." });
+		return res.status(500).json({ message: errorMessage(err, "Internal server error.") });
 	}
 });
 

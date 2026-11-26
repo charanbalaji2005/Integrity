@@ -1,4 +1,5 @@
 import * as jpeg from "jpeg-js";
+import { errorMessage } from "@/utils/error-message";
 
 export interface CameraQualityMetrics {
 	brightness: number; // 0 (pitch black) to 1 (pure white)
@@ -156,8 +157,8 @@ export function evaluateCameraQuality(
 			qualityScore,
 			warningMessage,
 		};
-	} catch (err: any) {
-		console.warn("[evaluateCameraQuality] Failed to compute metrics:", err.message);
+	} catch (err) {
+		console.warn("[evaluateCameraQuality] Failed to compute metrics:", errorMessage(err));
 		return getFallbackQuality("Failed to compute camera metrics");
 	}
 }

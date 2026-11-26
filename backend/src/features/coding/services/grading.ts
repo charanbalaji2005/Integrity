@@ -16,7 +16,11 @@ export function normalizeOutput(s: string, mode: OutputMatch): string {
 	return lines.join("\n");
 }
 
-export function outputsMatch(actual: string, expected: string, mode: OutputMatch = "trim"): boolean {
+export function outputsMatch(
+	actual: string,
+	expected: string,
+	mode: OutputMatch = "trim",
+): boolean {
 	return normalizeOutput(actual, mode) === normalizeOutput(expected, mode);
 }
 
@@ -29,9 +33,21 @@ export interface RubricCriterion {
 
 export const DEFAULT_TEST_WEIGHT = 70;
 export const DEFAULT_RUBRIC: RubricCriterion[] = [
-	{ criterion: "Logic & approach", marks: 1, description: "Algorithm is correct in principle and handles edge cases." },
-	{ criterion: "Efficiency", marks: 1, description: "Time/space complexity appropriate for the constraints." },
-	{ criterion: "Code quality", marks: 1, description: "Readable, well-structured, sensible names, no dead code." },
+	{
+		criterion: "Logic & approach",
+		marks: 1,
+		description: "Algorithm is correct in principle and handles edge cases.",
+	},
+	{
+		criterion: "Efficiency",
+		marks: 1,
+		description: "Time/space complexity appropriate for the constraints.",
+	},
+	{
+		criterion: "Code quality",
+		marks: 1,
+		description: "Readable, well-structured, sensible names, no dead code.",
+	},
 ];
 
 export interface AiCriterionScore {
@@ -74,7 +90,13 @@ export interface BreakdownRow {
 }
 
 export interface FlagReason {
-	code: "low_confidence" | "contradictory_evidence" | "no_test_cases" | "suspected_hardcoding" | "ambiguous_question" | "ai_unavailable";
+	code:
+		| "low_confidence"
+		| "contradictory_evidence"
+		| "no_test_cases"
+		| "suspected_hardcoding"
+		| "ambiguous_question"
+		| "ai_unavailable";
 	detail: string;
 }
 
@@ -116,7 +138,10 @@ export function grade(input: GradeInput): GradeOutput {
 					: `${input.testsPassed} of ${input.testsTotal} test cases passed.`,
 		});
 	} else if (testShare > 0) {
-		flags.push({ code: "no_test_cases", detail: "The question has no test cases, so correctness cannot be verified automatically." });
+		flags.push({
+			code: "no_test_cases",
+			detail: "The question has no test cases, so correctness cannot be verified automatically.",
+		});
 	}
 
 	// ── AI rubric (secondary evidence, clamped to faculty marks) ──
@@ -125,17 +150,29 @@ export function grade(input: GradeInput): GradeOutput {
 		aiMarks = 0;
 		for (const r of rubric) {
 			const rowMax = (aiShare * Math.max(0, r.marks)) / rubricTotal;
-			const found = input.ai.criteria.find((c) => c.criterion.trim().toLowerCase() === r.criterion.trim().toLowerCase());
+			const found = input.ai.criteria.find(
+				(c) => c.criterion.trim().toLowerCase() === r.criterion.trim().toLowerCase(),
+			);
 			let fraction = found && found.max > 0 ? clamp(found.awarded / found.max, 0, 1) : 0;
 			// Code that does not compile cannot earn more than half of the rubric marks.
 			if (input.compileStatus === "compilation_error") fraction = Math.min(fraction, 0.5);
 			const awarded = round2(rowMax * fraction);
 			aiMarks += awarded;
-			breakdown.push({ criterion: r.criterion, awarded, max: round2(rowMax), source: "ai", reason: found?.reason ?? (found ? undefined : "Not assessed by the AI.") });
+			breakdown.push({
+				criterion: r.criterion,
+				awarded,
+				max: round2(rowMax),
+				source: "ai",
+				reason: found?.reason ?? (found ? undefined : "Not assessed by the AI."),
+			});
 		}
 		aiMarks = round2(aiMarks);
 	} else if (aiShare > 0) {
-		flags.push({ code: "ai_unavailable", detail: "Vigil AI was unavailable, so rubric criteria (logic, efficiency, quality) were not scored." });
+		flags.push({
+			code: "ai_unavailable",
+			detail:
+				"Vigil AI was unavailable, so rubric criteria (logic, efficiency, quality) were not scored.",
+		});
 	}
 
 	// ── Evidence checks ──
@@ -147,15 +184,25 @@ export function grade(input: GradeInput): GradeOutput {
 	if (input.ai) {
 		const compiled = input.compileStatus === "ok";
 		if (compiled && input.testsTotal > 0 && input.ai.logicCorrect === true && ratio < 0.5) {
-			flags.push({ code: "contradictory_evidence", detail: `AI judged the logic correct, but only ${input.testsPassed}/${input.testsTotal} test cases passed.` });
+			flags.push({
+				code: "contradictory_evidence",
+				detail: `AI judged the logic correct, but only ${input.testsPassed}/${input.testsTotal} test cases passed.`,
+			});
 			confidence -= 0.4;
 		}
 		if (compiled && input.testsTotal >= 2 && input.ai.logicCorrect === false && ratio === 1) {
-			flags.push({ code: "contradictory_evidence", detail: "All test cases passed, but the AI judged the algorithm incorrect (tests may be too weak)." });
+			flags.push({
+				code: "contradictory_evidence",
+				detail:
+					"All test cases passed, but the AI judged the algorithm incorrect (tests may be too weak).",
+			});
 			confidence -= 0.4;
 		}
 		if (input.ai.suspectedHardcoding) {
-			flags.push({ code: "suspected_hardcoding", detail: "The program appears to print expected outputs directly instead of computing them." });
+			flags.push({
+				code: "suspected_hardcoding",
+				detail: "The program appears to print expected outputs directly instead of computing them.",
+			});
 			confidence -= 0.3;
 		}
 		if (input.ai.ambiguity?.trim()) {
@@ -169,11 +216,22 @@ export function grade(input: GradeInput): GradeOutput {
 	confidence = round2(clamp(confidence, 0, 1));
 
 	if (confidence < input.threshold && flags.length === 0) {
-		flags.push({ code: "low_confidence", detail: `Evaluation confidence ${Math.round(confidence * 100)}% is below the ${Math.round(input.threshold * 100)}% threshold.` });
+		flags.push({
+			code: "low_confidence",
+			detail: `Evaluation confidence ${Math.round(confidence * 100)}% is below the ${Math.round(input.threshold * 100)}% threshold.`,
+		});
 	}
 
 	const parts = [testMarks, aiMarks].filter((x): x is number => x != null);
-	const suggestedMarks = parts.length ? round2(clamp(parts.reduce((a, b) => a + b, 0), 0, max)) : null;
+	const suggestedMarks = parts.length
+		? round2(
+				clamp(
+					parts.reduce((a, b) => a + b, 0),
+					0,
+					max,
+				),
+			)
+		: null;
 
 	// De-duplicate reason codes (keep first detail).
 	const seen = new Set<string>();

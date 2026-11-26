@@ -65,7 +65,10 @@ export async function updateSettings(input: Partial<EngineSettings>): Promise<En
 const ACTIVE_HUMAN_STATUSES = ["in_progress", "waiting_student", "escalated"];
 
 export async function ensureStaffProfile(userId: string) {
-	const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, role: true } });
+	const user = await prisma.user.findUnique({
+		where: { id: userId },
+		select: { id: true, role: true },
+	});
 	if (!user || (user.role !== "support" && user.role !== "admin")) return null;
 	return prisma.supportStaff.upsert({
 		where: { userId },
@@ -106,7 +109,9 @@ function parseJson<T>(raw: string | null | undefined, fallback: T): T {
 }
 
 /** Live staff profiles with workload/performance computed from tickets. */
-export async function listStaffProfiles(where: { id?: string; userId?: string } = {}): Promise<StaffProfileDto[]> {
+export async function listStaffProfiles(
+	where: { id?: string; userId?: string } = {},
+): Promise<StaffProfileDto[]> {
 	const staff = await prisma.supportStaff.findMany({
 		where,
 		include: { user: { select: { name: true, email: true, role: true } } },
@@ -117,12 +122,25 @@ export async function listStaffProfiles(where: { id?: string; userId?: string } 
 	const [active, pending, resolved] = await Promise.all([
 		prisma.supportTicket.groupBy({
 			by: ["assignedAgentId"],
-			where: { assignedAgentId: { in: userIds }, ownershipType: "HUMAN", status: { in: ACTIVE_HUMAN_STATUSES } },
+			where: {
+				assignedAgentId: { in: userIds },
+				ownershipType: "HUMAN",
+				status: { in: ACTIVE_HUMAN_STATUSES },
+			},
 			_count: { _all: true },
 		}),
-		prisma.ticketAssignment.groupBy({ by: ["staffId"], where: { staffId: { in: staff.map((s) => s.id) }, status: "pending" }, _count: { _all: true } }),
+		prisma.ticketAssignment.groupBy({
+			by: ["staffId"],
+			where: { staffId: { in: staff.map((s) => s.id) }, status: "pending" },
+			_count: { _all: true },
+		}),
 		prisma.supportTicket.findMany({
-			where: { assignedAgentId: { in: userIds }, status: "resolved", resolvedAt: { not: null }, humanAcceptedAt: { not: null } },
+			where: {
+				assignedAgentId: { in: userIds },
+				status: "resolved",
+				resolvedAt: { not: null },
+				humanAcceptedAt: { not: null },
+			},
 			select: { assignedAgentId: true, createdAt: true, humanAcceptedAt: true, resolvedAt: true },
 			take: 5000,
 			orderBy: { resolvedAt: "desc" },
@@ -133,7 +151,8 @@ export async function listStaffProfiles(where: { id?: string; userId?: string } 
 
 	return staff.map((s) => {
 		const mine = resolved.filter((r) => r.assignedAgentId === s.userId);
-		const avg = (vals: number[]) => (vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null);
+		const avg = (vals: number[]) =>
+			vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
 		const activeTickets = activeMap.get(s.userId) ?? 0;
 		const pendingTickets = pendingMap.get(s.id) ?? 0;
 		return {
@@ -141,7 +160,8 @@ export async function listStaffProfiles(where: { id?: string; userId?: string } 
 			userId: s.userId,
 			name: s.user.name,
 			email: s.user.email,
-			supportRole: s.user.role === "admin" ? "supervisor" : (s.supportRole as "agent" | "supervisor"),
+			supportRole:
+				s.user.role === "admin" ? "supervisor" : (s.supportRole as "agent" | "supervisor"),
 			availability: s.availability as Availability,
 			isOnline: s.isOnline,
 			lastSeenAt: s.lastSeenAt ? s.lastSeenAt.toISOString() : null,
@@ -149,11 +169,18 @@ export async function listStaffProfiles(where: { id?: string; userId?: string } 
 			maxActiveTickets: s.maxActiveTickets,
 			activeTickets,
 			pendingTickets,
-			workloadPercent: s.maxActiveTickets > 0 ? Math.min(100, Math.round(((activeTickets + pendingTickets) / s.maxActiveTickets) * 100)) : 100,
+			workloadPercent:
+				s.maxActiveTickets > 0
+					? Math.min(100, Math.round(((activeTickets + pendingTickets) / s.maxActiveTickets) * 100))
+					: 100,
 			expertise: parseJson<string[]>(s.expertise, []),
 			workingHours: parseJson(s.workingHours, null),
-			avgResolutionMinutes: avg(mine.map((r) => (r.resolvedAt!.getTime() - r.humanAcceptedAt!.getTime()) / 60000)),
-			avgFirstResponseMinutes: avg(mine.map((r) => (r.humanAcceptedAt!.getTime() - r.createdAt.getTime()) / 60000)),
+			avgResolutionMinutes: avg(
+				mine.map((r) => (r.resolvedAt!.getTime() - r.humanAcceptedAt!.getTime()) / 60000),
+			),
+			avgFirstResponseMinutes: avg(
+				mine.map((r) => (r.humanAcceptedAt!.getTime() - r.createdAt.getTime()) / 60000),
+			),
 			resolvedCount: mine.length,
 			lastAssignedAt: s.lastAssignedAt ? s.lastAssignedAt.toISOString() : null,
 		};
@@ -163,8 +190,16 @@ export async function listStaffProfiles(where: { id?: string; userId?: string } 
 function withinWorkingHours(wh: StaffProfileDto["workingHours"], now: Date): boolean {
 	if (!wh || !Array.isArray(wh.days) || !wh.start || !wh.end) return true;
 	try {
-		const parts = new Intl.DateTimeFormat("en-GB", { timeZone: wh.timezone || "UTC", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(now);
-		const wd = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(parts.find((p) => p.type === "weekday")?.value ?? "");
+		const parts = new Intl.DateTimeFormat("en-GB", {
+			timeZone: wh.timezone || "UTC",
+			weekday: "short",
+			hour: "2-digit",
+			minute: "2-digit",
+			hour12: false,
+		}).formatToParts(now);
+		const wd = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(
+			parts.find((p) => p.type === "weekday")?.value ?? "",
+		);
 		const hm = `${parts.find((p) => p.type === "hour")?.value ?? "00"}:${parts.find((p) => p.type === "minute")?.value ?? "00"}`;
 		if (!wh.days.includes(wd)) return false;
 		return wh.start <= wh.end ? hm >= wh.start && hm < wh.end : hm >= wh.start || hm < wh.end; // supports overnight shifts
@@ -180,7 +215,13 @@ export interface Candidate {
 }
 
 /** Ranks eligible reps for a ticket category. Pure apart from the data passed in. */
-export function rankCandidates(profiles: StaffProfileDto[], category: string, settings: EngineSettings, exclude: Set<string>, now = new Date()): Candidate[] {
+export function rankCandidates(
+	profiles: StaffProfileDto[],
+	category: string,
+	settings: EngineSettings,
+	exclude: Set<string>,
+	now = new Date(),
+): Candidate[] {
 	const eligible = profiles.filter(
 		(p) =>
 			!exclude.has(p.id) &&
@@ -193,7 +234,9 @@ export function rankCandidates(profiles: StaffProfileDto[], category: string, se
 	if (eligible.length === 0) return [];
 	const w = settings.weights;
 	const total = w.workload + w.expertise + w.availability + w.performance + w.recency || 1;
-	const knownRes = eligible.map((p) => p.avgResolutionMinutes).filter((v): v is number => v !== null);
+	const knownRes = eligible
+		.map((p) => p.avgResolutionMinutes)
+		.filter((v): v is number => v !== null);
 	const slowest = knownRes.length ? Math.max(...knownRes) : null;
 
 	return eligible
@@ -201,11 +244,21 @@ export function rankCandidates(profiles: StaffProfileDto[], category: string, se
 			const workload = 1 - (p.activeTickets + p.pendingTickets) / Math.max(1, p.maxActiveTickets);
 			const expertise = p.expertise.includes(category) ? 1 : p.expertise.length === 0 ? 0.4 : 0;
 			const availability = p.isOnline ? 1 : 0.5;
-			const performance = p.avgResolutionMinutes === null || slowest === null || slowest === 0 ? 0.5 : Math.max(0, 1 - p.avgResolutionMinutes / (slowest * 1.25));
-			const recency = p.lastAssignedAt ? Math.min(1, (now.getTime() - new Date(p.lastAssignedAt).getTime()) / 3_600_000) : 1;
+			const performance =
+				p.avgResolutionMinutes === null || slowest === null || slowest === 0
+					? 0.5
+					: Math.max(0, 1 - p.avgResolutionMinutes / (slowest * 1.25));
+			const recency = p.lastAssignedAt
+				? Math.min(1, (now.getTime() - new Date(p.lastAssignedAt).getTime()) / 3_600_000)
+				: 1;
 			const breakdown = { workload, expertise, availability, performance, recency };
 			const score =
-				(w.workload * workload + w.expertise * expertise + w.availability * availability + w.performance * performance + w.recency * recency) / total;
+				(w.workload * workload +
+					w.expertise * expertise +
+					w.availability * availability +
+					w.performance * performance +
+					w.recency * recency) /
+				total;
 			return { staff: p, score: Math.round(score * 1000) / 1000, breakdown };
 		})
 		.sort((a, b) => b.score - a.score || a.staff.activeTickets - b.staff.activeTickets);
@@ -215,37 +268,71 @@ export function rankCandidates(profiles: StaffProfileDto[], category: string, se
  * Offers an AI-owned, unassigned ticket to the best eligible rep.
  * Returns the chosen staff id or null (no eligible rep — ticket stays queued).
  */
-export async function autoAssign(ticketId: string, opts: { exclude?: string[]; reason?: string } = {}): Promise<string | null> {
+export async function autoAssign(
+	ticketId: string,
+	opts: { exclude?: string[]; reason?: string } = {},
+): Promise<string | null> {
 	const ticket = await prisma.supportTicket.findUnique({ where: { id: ticketId } });
-	if (!ticket || ticket.ownershipType !== "AI" || !["unassigned", "escalated"].includes(ticket.status)) return null;
+	if (ticket?.ownershipType !== "AI" || !["unassigned", "escalated"].includes(ticket.status))
+		return null;
 	const settings = await getSettings();
-	const previous = await prisma.ticketAssignment.findMany({ where: { ticketId, status: { in: ["timed_out", "released", "reassigned"] } }, select: { staffId: true } });
+	const previous = await prisma.ticketAssignment.findMany({
+		where: { ticketId, status: { in: ["timed_out", "released", "reassigned"] } },
+		select: { staffId: true },
+	});
 	const exclude = new Set([...(opts.exclude ?? []), ...previous.map((p) => p.staffId)]);
 	const profiles = await listStaffProfiles();
 	let ranked = rankCandidates(profiles, ticket.category, settings, exclude);
 	// If everyone eligible was excluded by history, allow previous reps again rather than stalling.
-	if (ranked.length === 0 && previous.length > 0) ranked = rankCandidates(profiles, ticket.category, settings, new Set(opts.exclude ?? []));
+	if (ranked.length === 0 && previous.length > 0)
+		ranked = rankCandidates(profiles, ticket.category, settings, new Set(opts.exclude ?? []));
 	const best = ranked[0];
 	if (!best) return null;
-	return offerTo(ticketId, best.staff.id, { score: best.score, breakdown: best.breakdown, reason: opts.reason ?? null, assignedById: null, timeoutSeconds: settings.acceptanceTimeoutSeconds });
+	return offerTo(ticketId, best.staff.id, {
+		score: best.score,
+		breakdown: best.breakdown,
+		reason: opts.reason ?? null,
+		assignedById: null,
+		timeoutSeconds: settings.acceptanceTimeoutSeconds,
+	});
 }
 
 /** Creates a pending assignment if the ticket is still free (compare-and-set). */
 export async function offerTo(
 	ticketId: string,
 	staffId: string,
-	o: { score: number | null; breakdown: Record<string, number> | null; reason: string | null; assignedById: string | null; timeoutSeconds: number },
+	o: {
+		score: number | null;
+		breakdown: Record<string, number> | null;
+		reason: string | null;
+		assignedById: string | null;
+		timeoutSeconds: number;
+	},
 ): Promise<string | null> {
-	const staff = await prisma.supportStaff.findUnique({ where: { id: staffId }, include: { user: { select: { id: true, name: true } } } });
+	const staff = await prisma.supportStaff.findUnique({
+		where: { id: staffId },
+		include: { user: { select: { id: true, name: true } } },
+	});
 	if (!staff) return null;
 	const created = await prisma.$transaction(async (tx) => {
 		const claimed = await tx.supportTicket.updateMany({
-			where: { id: ticketId, ownershipType: "AI", status: { in: ["unassigned", "escalated", "pending_acceptance"] } },
+			where: {
+				id: ticketId,
+				ownershipType: "AI",
+				status: { in: ["unassigned", "escalated", "pending_acceptance"] },
+			},
 			data: { status: "pending_acceptance" },
 		});
 		if (claimed.count === 0) return null;
 		// Supersede any other pending offer on this ticket.
-		await tx.ticketAssignment.updateMany({ where: { ticketId, status: "pending" }, data: { status: "reassigned", endedAt: new Date(), reassignmentReason: o.reason ?? "Reassigned" } });
+		await tx.ticketAssignment.updateMany({
+			where: { ticketId, status: "pending" },
+			data: {
+				status: "reassigned",
+				endedAt: new Date(),
+				reassignmentReason: o.reason ?? "Reassigned",
+			},
+		});
 		const a = await tx.ticketAssignment.create({
 			data: {
 				ticketId,
@@ -264,7 +351,11 @@ export async function offerTo(
 	if (!created) return null;
 	const ticket = await prisma.supportTicket.findUnique({ where: { id: ticketId } });
 	if (ticket) {
-		emitTicketEvent("ticket:assigned", ticketId, { ticket: toSummary(ticket), staffId, staffName: staff.user.name });
+		emitTicketEvent("ticket:assigned", ticketId, {
+			ticket: toSummary(ticket),
+			staffId,
+			staffName: staff.user.name,
+		});
 		await notifyUser(staff.user.id, {
 			title: `New assignment: ${ticket.referenceNumber} (${ticket.priority})`,
 			description: `${ticket.title} — accept within ${Math.round(o.timeoutSeconds / 60)} min.`,
@@ -277,7 +368,13 @@ export async function offerTo(
 		actorName: o.assignedById ? null : "Assignment engine",
 		ticketId,
 		action: o.assignedById ? "ASSIGNMENT_OVERRIDE" : "AUTO_ASSIGNED",
-		newValue: { staffId, staffName: staff.user.name, score: o.score, breakdown: o.breakdown, reason: o.reason },
+		newValue: {
+			staffId,
+			staffName: staff.user.name,
+			score: o.score,
+			breakdown: o.breakdown,
+			reason: o.reason,
+		},
 	});
 	return staffId;
 }
@@ -292,7 +389,14 @@ export async function expireTimedOutAssignments(): Promise<void> {
 	});
 	for (const a of expired) {
 		const changed = await prisma.$transaction(async (tx) => {
-			const upd = await tx.ticketAssignment.updateMany({ where: { id: a.id, status: "pending" }, data: { status: "timed_out", endedAt: new Date(), reassignmentReason: "Acceptance timeout" } });
+			const upd = await tx.ticketAssignment.updateMany({
+				where: { id: a.id, status: "pending" },
+				data: {
+					status: "timed_out",
+					endedAt: new Date(),
+					reassignmentReason: "Acceptance timeout",
+				},
+			});
 			if (upd.count === 0) return null;
 			return tx.supportTicket.updateMany({
 				where: { id: a.ticketId, status: "pending_acceptance", ownershipType: "AI" },
@@ -300,19 +404,44 @@ export async function expireTimedOutAssignments(): Promise<void> {
 			});
 		});
 		if (!changed || changed.count === 0) continue;
-		await audit({ actorName: "Assignment engine", ticketId: a.ticketId, action: "ASSIGNMENT_TIMED_OUT", previousValue: { staffId: a.staffId, staffName: a.staff.user.name } });
-		await notifyUser(a.staff.user.id, { title: "Assignment timed out", description: "A ticket offered to you was not accepted in time and has been re-queued.", ticketId: a.ticketId });
+		await audit({
+			actorName: "Assignment engine",
+			ticketId: a.ticketId,
+			action: "ASSIGNMENT_TIMED_OUT",
+			previousValue: { staffId: a.staffId, staffName: a.staff.user.name },
+		});
+		await notifyUser(a.staff.user.id, {
+			title: "Assignment timed out",
+			description: "A ticket offered to you was not accepted in time and has been re-queued.",
+			ticketId: a.ticketId,
+		});
 		const ticket = await prisma.supportTicket.findUnique({ where: { id: a.ticketId } });
 		if (!ticket) continue;
-		emitTicketEvent("ticket:reassigned", ticket.id, { ticket: toSummary(ticket), reason: "timeout" });
-		if (ticket.reassignmentCount >= settings.reassignAlertThreshold) await alertSupervisors(ticket.id, `${ticket.referenceNumber} has been reassigned ${ticket.reassignmentCount} times without acceptance.`);
+		emitTicketEvent("ticket:reassigned", ticket.id, {
+			ticket: toSummary(ticket),
+			reason: "timeout",
+		});
+		if (ticket.reassignmentCount >= settings.reassignAlertThreshold)
+			await alertSupervisors(
+				ticket.id,
+				`${ticket.referenceNumber} has been reassigned ${ticket.reassignmentCount} times without acceptance.`,
+			);
 		await autoAssign(ticket.id, { reason: "Previous offer timed out" });
 	}
 }
 
 export async function alertSupervisors(ticketId: string, description: string) {
-	const sups = await prisma.supportStaff.findMany({ where: { OR: [{ supportRole: "supervisor" }, { user: { role: "admin" } }] }, select: { userId: true } });
-	for (const s of sups) await notifyUser(s.userId, { title: "Supervisor attention needed", description, ticketId, priority: "high" });
+	const sups = await prisma.supportStaff.findMany({
+		where: { OR: [{ supportRole: "supervisor" }, { user: { role: "admin" } }] },
+		select: { userId: true },
+	});
+	for (const s of sups)
+		await notifyUser(s.userId, {
+			title: "Supervisor attention needed",
+			description,
+			ticketId,
+			priority: "high",
+		});
 	emitToStaff("notification:supervisor", { ticketId, description });
 }
 
@@ -328,23 +457,39 @@ export async function processQueue(): Promise<void> {
 		where: { ownershipType: "AI", status: { in: ["unassigned", "escalated"] } },
 		select: { id: true, priority: true, createdAt: true, queuePosition: true, estimatedWait: true },
 	});
-	waiting.sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9) || a.createdAt.getTime() - b.createdAt.getTime());
+	waiting.sort(
+		(a, b) =>
+			(PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9) ||
+			a.createdAt.getTime() - b.createdAt.getTime(),
+	);
 	for (const t of waiting) {
 		const assigned = await autoAssign(t.id);
 		if (!assigned) break; // no eligible capacity left
 	}
 	// Queue position + rough wait estimate from live capacity.
 	const still = await prisma.supportTicket.findMany({
-		where: { ownershipType: "AI", status: { in: ["unassigned", "escalated", "pending_acceptance"] } },
+		where: {
+			ownershipType: "AI",
+			status: { in: ["unassigned", "escalated", "pending_acceptance"] },
+		},
 		select: { id: true, priority: true, createdAt: true, queuePosition: true, estimatedWait: true },
 	});
-	still.sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9) || a.createdAt.getTime() - b.createdAt.getTime());
-	const online = await prisma.supportStaff.count({ where: { isOnline: true, availability: "available", assignmentsEnabled: true } });
+	still.sort(
+		(a, b) =>
+			(PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9) ||
+			a.createdAt.getTime() - b.createdAt.getTime(),
+	);
+	const online = await prisma.supportStaff.count({
+		where: { isOnline: true, availability: "available", assignmentsEnabled: true },
+	});
 	for (const [i, t] of still.entries()) {
 		const position = i + 1;
 		const estimatedWait = online > 0 ? Math.ceil(position / online) * 8 : 30;
 		if (t.queuePosition !== position || t.estimatedWait !== estimatedWait) {
-			await prisma.supportTicket.update({ where: { id: t.id }, data: { queuePosition: position, estimatedWait } });
+			await prisma.supportTicket.update({
+				where: { id: t.id },
+				data: { queuePosition: position, estimatedWait },
+			});
 			emitToTicket("ticket:queue", t.id, { queuePosition: position, estimatedWait });
 		}
 	}

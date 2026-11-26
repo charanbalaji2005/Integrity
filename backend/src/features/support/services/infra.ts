@@ -12,20 +12,40 @@ export const userRoom = (userId: string) => `user-${userId}`;
 export function emitTicketEvent(event: string, ticketId: string, payload: Record<string, unknown>) {
 	const io = getIO();
 	if (!io) return;
-	io.to(STAFF_ROOM).to(ticketRoom(ticketId)).emit(event, { ticketId, ...payload });
+	io.to(STAFF_ROOM)
+		.to(ticketRoom(ticketId))
+		.emit(event, { ticketId, ...payload });
 }
 export function emitToTicket(event: string, ticketId: string, payload: Record<string, unknown>) {
-	getIO()?.to(ticketRoom(ticketId)).emit(event, { ticketId, ...payload });
+	getIO()
+		?.to(ticketRoom(ticketId))
+		.emit(event, { ticketId, ...payload });
 }
 export function emitToStaff(event: string, payload: Record<string, unknown>) {
 	getIO()?.to(STAFF_ROOM).emit(event, payload);
 }
 
 /** Persisted notification + real-time push to that user only. */
-export async function notifyUser(userId: string, n: { title: string; description: string; ticketId?: string; priority?: "low" | "medium" | "high" }) {
+export async function notifyUser(
+	userId: string,
+	n: {
+		title: string;
+		description: string;
+		ticketId?: string;
+		priority?: "low" | "medium" | "high";
+	},
+) {
 	await prisma.notification
 		.create({
-			data: { userId, title: n.title, description: n.description, type: "system", priority: n.priority ?? "medium", senderName: "Support Hub", senderRole: "support" },
+			data: {
+				userId,
+				title: n.title,
+				description: n.description,
+				type: "system",
+				priority: n.priority ?? "medium",
+				senderName: "Support Hub",
+				senderRole: "support",
+			},
 		})
 		.catch(() => undefined);
 	getIO()?.to(userRoom(userId)).emit("notification:new", n);
@@ -40,7 +60,8 @@ export async function audit(params: {
 	previousValue?: unknown;
 	newValue?: unknown;
 }) {
-	const str = (v: unknown) => (v === undefined || v === null ? null : typeof v === "string" ? v : JSON.stringify(v));
+	const str = (v: unknown) =>
+		v === undefined || v === null ? null : typeof v === "string" ? v : JSON.stringify(v);
 	await prisma.supportAuditLog
 		.create({
 			data: {
@@ -59,7 +80,9 @@ export async function audit(params: {
 const URL_TTL_SECONDS = 10 * 60;
 
 function sign(id: string, exp: number): string {
-	return createHmac("sha256", env.BETTER_AUTH_SECRET).update(`support-attachment:${id}:${exp}`).digest("base64url");
+	return createHmac("sha256", env.BETTER_AUTH_SECRET)
+		.update(`support-attachment:${id}:${exp}`)
+		.digest("base64url");
 }
 
 /** Short-lived URL usable directly in <img src>/<a href> (no auth header needed). */
@@ -78,13 +101,29 @@ export function verifyAttachmentSignature(id: string, exp: string, sig: string):
 }
 
 // ------------------------------------------------------------- uploads
-export const ALLOWED_UPLOAD_MIME = new Set(["image/png", "image/jpeg", "image/webp", "application/pdf", "text/plain"]);
+export const ALLOWED_UPLOAD_MIME = new Set([
+	"image/png",
+	"image/jpeg",
+	"image/webp",
+	"application/pdf",
+	"text/plain",
+]);
 
 export function detectUploadMime(buf: Buffer, declared: string): string | null {
 	if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "image/jpeg";
-	if (buf.length >= 8 && buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "image/png";
-	if (buf.length >= 12 && buf.subarray(0, 4).toString("latin1") === "RIFF" && buf.subarray(8, 12).toString("latin1") === "WEBP") return "image/webp";
-	if (buf.length >= 5 && buf.subarray(0, 5).toString("latin1") === "%PDF-") return "application/pdf";
+	if (
+		buf.length >= 8 &&
+		buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+	)
+		return "image/png";
+	if (
+		buf.length >= 12 &&
+		buf.subarray(0, 4).toString("latin1") === "RIFF" &&
+		buf.subarray(8, 12).toString("latin1") === "WEBP"
+	)
+		return "image/webp";
+	if (buf.length >= 5 && buf.subarray(0, 5).toString("latin1") === "%PDF-")
+		return "application/pdf";
 	if (declared === "text/plain" && !buf.subarray(0, 4096).includes(0)) return "text/plain";
 	return null;
 }

@@ -1,13 +1,13 @@
 import { fromNodeHeaders } from "better-auth/node";
-import { canDirectMessage } from "../features/chat/services/relationships";
 import type { Server as HttpServer, IncomingHttpHeaders } from "http";
 import { type Socket, Server as SocketServer } from "socket.io";
 import { env } from "../config/env";
 import { prisma } from "../database";
+import { isTwoFactorPending } from "../features/authentication/services/two-factor-service";
+import { canDirectMessage } from "../features/chat/services/relationships";
 import { canSeeStudentSection, parseSections, sectionMonitorRoom } from "../utils/faculty-sections";
 import { isMultiPortalEmail } from "../utils/multi-portal";
 import { auth } from "./auth";
-import { isTwoFactorPending } from "../features/authentication/services/two-factor-service";
 
 /**
  * Identity attached to every socket. It is derived ONLY from a verified
@@ -154,11 +154,23 @@ async function resolveSocketIdentity(
 /** Marks a support rep online/offline and tells other staff (used by the assignment engine). */
 async function setSupportPresence(userId: string, online: boolean) {
 	try {
-		const staff = await prisma.supportStaff.findUnique({ where: { userId }, include: { user: { select: { name: true } } } });
+		const staff = await prisma.supportStaff.findUnique({
+			where: { userId },
+			include: { user: { select: { name: true } } },
+		});
 		if (!staff) return;
-		await prisma.supportStaff.update({ where: { userId }, data: { isOnline: online, lastSeenAt: new Date() } });
+		await prisma.supportStaff.update({
+			where: { userId },
+			data: { isOnline: online, lastSeenAt: new Date() },
+		});
 		io?.to("support-staff").emit(online ? "support:agent:online" : "support:agent:offline", {
-			staff: { id: staff.id, userId, name: staff.user.name, isOnline: online, availability: staff.availability },
+			staff: {
+				id: staff.id,
+				userId,
+				name: staff.user.name,
+				isOnline: online,
+				availability: staff.availability,
+			},
 		});
 	} catch (err) {
 		console.warn("[Socket] support presence update failed:", err);
@@ -174,7 +186,10 @@ async function canJoinRoom(identity: SocketIdentity, roomId: string): Promise<bo
 	if (roomId === "support-staff") return role === "support" || role === "admin";
 	if (roomId.startsWith("support-ticket-")) {
 		if (role === "support" || role === "admin") return true;
-		const ticket = await prisma.supportTicket.findUnique({ where: { id: roomId.slice("support-ticket-".length) }, select: { studentId: true } });
+		const ticket = await prisma.supportTicket.findUnique({
+			where: { id: roomId.slice("support-ticket-".length) },
+			select: { studentId: true },
+		});
 		return ticket?.studentId === userId;
 	}
 
@@ -488,7 +503,9 @@ export function initSocketServer(server: HttpServer) {
 					// The college notice board is read-only for everyone except administrators.
 					if (data.roomId === "college" || data.type === "college") {
 						if (identity.role !== "admin") {
-							socket.emit("error", { message: "Only administrators can post college announcements." });
+							socket.emit("error", {
+								message: "Only administrators can post college announcements.",
+							});
 							return;
 						}
 					}
@@ -502,7 +519,9 @@ export function initSocketServer(server: HttpServer) {
 							data.roomId !== expectedRoom ||
 							!(await canDirectMessage({ id: identity.userId, role: identity.role }, recipientId))
 						) {
-							socket.emit("error", { message: "You can only message approved contacts and accepted friends." });
+							socket.emit("error", {
+								message: "You can only message approved contacts and accepted friends.",
+							});
 							return;
 						}
 					}
@@ -596,7 +615,8 @@ export function initSocketServer(server: HttpServer) {
 			if (!set || set.size === 0) {
 				userSocketCounts.delete(uId);
 				io?.emit("user-status", { userId: uId, status: "offline" });
-				if (identity.role === "support" || identity.role === "admin") void setSupportPresence(uId, false);
+				if (identity.role === "support" || identity.role === "admin")
+					void setSupportPresence(uId, false);
 			}
 		});
 	});

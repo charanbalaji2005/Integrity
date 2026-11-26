@@ -1,6 +1,5 @@
 import { type IRouter, Router } from "express";
 import { rateLimiter, requireAuth } from "@/middleware/auth-middleware";
-import { loginStatusHandler, sendLoginCodeHandler, verifyLoginCodeHandler } from "../controllers/two-factor-controller";
 import {
 	forgotPassword,
 	googleOAuth,
@@ -13,6 +12,11 @@ import {
 	verifyOtp,
 	verifyRegisterOtpHandler,
 } from "../controllers/authentication-controller";
+import {
+	loginStatusHandler,
+	sendLoginCodeHandler,
+	verifyLoginCodeHandler,
+} from "../controllers/two-factor-controller";
 
 const router: IRouter = Router();
 
@@ -23,6 +27,15 @@ const authRateLimiter = rateLimiter({
 	message: "Too many authentication requests from this IP. Please wait a minute and try again.",
 });
 
+// Separate budget for the 2FA step so a normal sign-in (login + status + send +
+// verify) never trips the shared auth limiter. Guessing is bounded separately:
+// each code allows 5 attempts, then the pending session is destroyed.
+const twoFactorRateLimiter = rateLimiter({
+	windowMs: 60 * 1000,
+	maxRequests: 30,
+	message: "Too many verification requests from this IP. Please wait a minute and try again.",
+});
+
 // Student Email Verification for Registration
 router.post("/send-register-otp", authRateLimiter, sendRegisterOtpHandler);
 router.post("/verify-register-otp", authRateLimiter, verifyRegisterOtpHandler);
@@ -31,9 +44,9 @@ router.post("/verify-register-otp", authRateLimiter, verifyRegisterOtpHandler);
 router.post("/login", authRateLimiter, login);
 
 // Two-step verification (session issued by /login or Google stays unusable until verified)
-router.post("/2fa/status", authRateLimiter, loginStatusHandler);
-router.post("/2fa/send", authRateLimiter, sendLoginCodeHandler);
-router.post("/2fa/verify", authRateLimiter, verifyLoginCodeHandler);
+router.post("/2fa/status", twoFactorRateLimiter, loginStatusHandler);
+router.post("/2fa/send", twoFactorRateLimiter, sendLoginCodeHandler);
+router.post("/2fa/verify", twoFactorRateLimiter, verifyLoginCodeHandler);
 
 // POST /api/authentication/forgot-password
 router.post("/forgot-password", authRateLimiter, forgotPassword);

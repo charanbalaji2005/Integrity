@@ -3,13 +3,20 @@ import multer from "multer";
 import { HTTP_STATUS } from "@/constants/http-status";
 import { requireAuth, requireRole } from "@/middleware/auth-middleware";
 import { AppError } from "@/utils/app-error";
-import { sendSupportRegisterOtp, suggestReply, verifySupportRegisterOtp } from "../controllers/support-controller";
+import {
+	sendSupportRegisterOtp,
+	suggestReply,
+	verifySupportRegisterOtp,
+} from "../controllers/support-controller";
 import * as hub from "../controllers/support-hub-controller";
 
 const router: IRouter = Router();
 const staffOnly = requireRole("support", "admin");
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 5 } });
+const upload = multer({
+	storage: multer.memoryStorage(),
+	limits: { fileSize: 10 * 1024 * 1024, files: 5 },
+});
 /** Multer with clear 400s; `max` files in the "files" field. */
 function filesUpload(max: number) {
 	return (req: Request, res: Response, next: NextFunction) => {

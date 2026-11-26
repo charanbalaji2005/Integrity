@@ -1,5 +1,6 @@
 import type * as tf from "@tensorflow/tfjs-core";
 import * as faceapi from "@vladmandic/face-api/dist/face-api.node-wasm.js";
+import { errorMessage } from "@/utils/error-message";
 import { base64ToTensor, initFaceApi } from "../services/proctoring-service";
 import { type CalibrationBaseline, estimateHeadPose, type HeadPoseEuler } from "./pose-estimator";
 
@@ -130,13 +131,13 @@ export async function detectFacePerception(
 				possibleSpeech,
 			},
 		};
-	} catch (err: any) {
-		console.warn("[detectFacePerception] Face detection error:", err.message);
+	} catch (err) {
+		console.warn("[detectFacePerception] Face detection error:", errorMessage(err));
 		return {
 			detected: false,
 			faceCount: 0,
 			confidence: 0,
-			error: err.message,
+			error: errorMessage(err),
 		};
 	} finally {
 		if (tensor) {
@@ -159,7 +160,7 @@ export async function computeFaceDescriptor(base64Image: string): Promise<number
 			.detectAllFaces(tensor as any, new faceapi.TinyFaceDetectorOptions({ inputSize: 224 }))
 			.withFaceLandmarks()
 			.withFaceDescriptors();
-		if (!detections || detections.length !== 1) return null;
+		if (detections?.length !== 1) return null;
 		return Array.from(detections[0].descriptor);
 	} catch (err: unknown) {
 		console.warn(

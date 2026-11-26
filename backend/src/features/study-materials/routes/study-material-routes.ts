@@ -4,7 +4,11 @@ import { HTTP_STATUS } from "@/constants/http-status";
 import { getAuthUser, requireAuth } from "@/middleware/auth-middleware";
 import { AppError } from "@/utils/app-error";
 import { sendSuccess } from "@/utils/response";
-import { contentDisposition, FILE_RULES, type UploadedFile } from "../../courses/services/file-storage";
+import {
+	contentDisposition,
+	FILE_RULES,
+	type UploadedFile,
+} from "../../courses/services/file-storage";
 import * as service from "../services/study-material-service";
 
 const upload = multer({
@@ -18,7 +22,9 @@ function singleFile(req: Request, res: Response, next: NextFunction) {
 		if (err instanceof multer.MulterError) {
 			return next(
 				new AppError(
-					err.code === "LIMIT_FILE_SIZE" ? "PDF is larger than 25 MB." : "Upload a single PDF file.",
+					err.code === "LIMIT_FILE_SIZE"
+						? "PDF is larger than 25 MB."
+						: "Upload a single PDF file.",
 					HTTP_STATUS.BAD_REQUEST,
 				),
 			);
@@ -66,7 +72,10 @@ router.post(
 router.get(
 	"/:id",
 	wrap(async (req, res) => {
-		const { fileId: _fileId, ...m } = await service.getAccessibleMaterial(getAuthUser(req), param(req, "id"));
+		const { fileId: _fileId, ...m } = await service.getAccessibleMaterial(
+			getAuthUser(req),
+			param(req, "id"),
+		);
 		sendSuccess(res, m);
 	}),
 );
@@ -79,7 +88,10 @@ router.get(
 		const download = req.query.download === "1";
 		res.setHeader("Content-Type", file.mimeType);
 		res.setHeader("Content-Length", String(file.sizeBytes));
-		res.setHeader("Content-Disposition", contentDisposition(download ? "attachment" : "inline", file.fileName));
+		res.setHeader(
+			"Content-Disposition",
+			contentDisposition(download ? "attachment" : "inline", file.fileName),
+		);
 		res.setHeader("Cache-Control", "private, max-age=300");
 		res.setHeader("X-Content-Type-Options", "nosniff");
 		res.end(Buffer.from(file.data));

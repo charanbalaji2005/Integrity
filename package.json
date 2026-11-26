@@ -6,12 +6,15 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
     "@emotion/styled": "11.14.1",
     "@hookform/resolvers": "5.2.2",
+    "@monaco-editor/react": "4.7.0",
     "@mui/icons-material": "7.3.5",
     "@mui/material": "7.3.5",
     "@popperjs/core": "2.11.8",
@@ -49,7 +52,6 @@
     "date-fns": "3.6.0",
     "embla-carousel-react": "8.6.0",
     "input-otp": "1.4.2",
-    "@monaco-editor/react": "4.7.0",
     "lucide-react": "0.487.0",
     "monaco-editor": "0.52.2",
     "motion": "12.23.24",
@@ -76,9 +78,15 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.1",
+    "@testing-library/dom": "10.4.0",
+    "@testing-library/jest-dom": "6.6.3",
+    "@testing-library/react": "16.3.0",
+    "@testing-library/user-event": "14.6.1",
     "@vitejs/plugin-react": "^6.0.3",
+    "jsdom": "26.1.0",
     "tailwindcss": "4.1.12",
-    "vite": "^8.0.16"
+    "vite": "^8.0.16",
+    "vitest": "3.2.4"
   },
   "packageManager": "pnpm@10.15.1"
 }

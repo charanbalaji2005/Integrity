@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
+import { errorMessage } from "@/utils/error-message";
 import { HTTP_STATUS } from "../../../constants/http-status";
 import { AppError } from "../../../utils/app-error";
 import { sendSuccess } from "../../../utils/response";
@@ -24,9 +25,9 @@ export async function analyze(req: Request, res: Response): Promise<void> {
 	try {
 		const result = await analyzeSimilarity(studentAnswer, correctAnswer);
 		sendSuccess(res, result, "Similarity analysis completed successfully.", HTTP_STATUS.OK);
-	} catch (err: any) {
+	} catch (err) {
 		throw new AppError(
-			err.message || "Failed to analyze similarity.",
+			errorMessage(err, "Failed to analyze similarity."),
 			HTTP_STATUS.INTERNAL_SERVER_ERROR,
 		);
 	}

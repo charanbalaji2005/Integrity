@@ -16,10 +16,14 @@ export type VerificationStatus = "unverified" | "pending" | "approved" | "reject
 /** Magic-byte check so a renamed file can't pass the MIME filter. */
 export function detectMime(buf: Buffer): string | null {
 	if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "image/jpeg";
-	if (buf.length >= 8 && buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+	if (
+		buf.length >= 8 &&
+		buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+	) {
 		return "image/png";
 	}
-	if (buf.length >= 5 && buf.subarray(0, 5).toString("latin1") === "%PDF-") return "application/pdf";
+	if (buf.length >= 5 && buf.subarray(0, 5).toString("latin1") === "%PDF-")
+		return "application/pdf";
 	return null;
 }
 
@@ -73,7 +77,10 @@ export async function submitDocument(params: {
 	const user = await prisma.user.findUnique({ where: { id: userId } });
 	if (!user) throw new AppError("User not found", HTTP_STATUS.NOT_FOUND);
 	if (user.role !== "user") {
-		throw new AppError("Only student accounts submit enrolment verification.", HTTP_STATUS.BAD_REQUEST);
+		throw new AppError(
+			"Only student accounts submit enrolment verification.",
+			HTTP_STATUS.BAD_REQUEST,
+		);
 	}
 	if (user.verificationStatus === "approved") {
 		throw new AppError("Your account is already verified.", HTTP_STATUS.CONFLICT);
@@ -175,9 +182,22 @@ export async function getDocument(id: string) {
 	return doc;
 }
 
-async function notifyStudent(userId: string, title: string, description: string, priority: "medium" | "high") {
+async function notifyStudent(
+	userId: string,
+	title: string,
+	description: string,
+	priority: "medium" | "high",
+) {
 	await prisma.notification.create({
-		data: { userId, title, description, type: "system", priority, senderName: "IntegrityOS Admin", senderRole: "admin" },
+		data: {
+			userId,
+			title,
+			description,
+			type: "system",
+			priority,
+			senderName: "IntegrityOS Admin",
+			senderRole: "admin",
+		},
 	});
 }
 
@@ -221,7 +241,11 @@ export async function reviewRequest(params: {
 			where: { id: request.userId },
 			data:
 				decision === "approved"
-					? { verificationStatus: "approved", verifiedAt: now, ...(institutionName ? { institutionName } : {}) }
+					? {
+							verificationStatus: "approved",
+							verifiedAt: now,
+							...(institutionName ? { institutionName } : {}),
+						}
 					: { verificationStatus: "rejected", verifiedAt: null },
 		}),
 	]);

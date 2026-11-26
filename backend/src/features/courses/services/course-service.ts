@@ -430,8 +430,7 @@ export async function authorizeMaterialFile(
 		where: { id: materialId },
 		include: { course: true },
 	});
-	if (!material || !material.fileId)
-		throw new AppError("Material not found.", HTTP_STATUS.NOT_FOUND);
+	if (!material?.fileId) throw new AppError("Material not found.", HTTP_STATUS.NOT_FOUND);
 	if (isStaff(user)) {
 		if (user.role !== "admin" && material.course.institutionName !== institutionOf(user)) {
 			throw new AppError("Material not found.", HTTP_STATUS.NOT_FOUND);
@@ -493,7 +492,7 @@ export async function uploadQuestionImage(user: CourseUser, file: UploadedFile |
 
 export async function getQuestionImage(fileId: string) {
 	const file = await prisma.storedFile.findUnique({ where: { id: fileId } });
-	if (!file || file.purpose !== "question-image") {
+	if (file?.purpose !== "question-image") {
 		throw new AppError("Image not found.", HTTP_STATUS.NOT_FOUND);
 	}
 	return file;

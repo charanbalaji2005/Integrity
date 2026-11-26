@@ -104,7 +104,7 @@ export interface UploadedFile {
 
 export function validateUpload(file: UploadedFile | undefined, purpose: FilePurpose) {
 	const rule = FILE_RULES[purpose];
-	if (!file || !file.buffer?.length) {
+	if (!file?.buffer?.length) {
 		throw new AppError("No file was uploaded.", HTTP_STATUS.BAD_REQUEST);
 	}
 	const ext = path.extname(file.originalname).slice(1).toLowerCase();

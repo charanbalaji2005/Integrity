@@ -1,5 +1,6 @@
 import { type IRouter, Router } from "express";
 import { requireAuth } from "@/middleware/auth-middleware";
+import { postAnnouncement } from "../controllers/announcement-controller";
 import {
 	createChatRequest,
 	deleteMessage,
@@ -13,7 +14,6 @@ import {
 	pinMessage,
 	reactToMessage,
 } from "../controllers/chat-controller";
-import { postAnnouncement } from "../controllers/announcement-controller";
 import {
 	deleteFriend,
 	friendRequestAction,

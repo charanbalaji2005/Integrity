@@ -3,7 +3,15 @@ import { HTTP_STATUS } from "@/constants/http-status";
 import { prisma } from "@/database";
 import { AppError } from "@/utils/app-error";
 
-export const TECH_ISSUES = ["none", "camera", "microphone", "network", "browser", "timer", "other"] as const;
+export const TECH_ISSUES = [
+	"none",
+	"camera",
+	"microphone",
+	"network",
+	"browser",
+	"timer",
+	"other",
+] as const;
 
 export const submitFeedbackSchema = z.object({
 	attemptId: z.string().min(1),
@@ -22,12 +30,14 @@ interface FeedbackUser {
 	email: string;
 }
 
-const NEGATIVE_WORDS = /\b(bad|worst|terrible|unfair|crash|lag|slow|stuck|broken|annoying|hate|issue|problem|bug|failed)\b/i;
-const POSITIVE_WORDS = /\b(good|great|smooth|easy|nice|excellent|fair|love|helpful|clear|fine|awesome)\b/i;
+const NEGATIVE_WORDS =
+	/\b(bad|worst|terrible|unfair|crash|lag|slow|stuck|broken|annoying|hate|issue|problem|bug|failed)\b/i;
+const POSITIVE_WORDS =
+	/\b(good|great|smooth|easy|nice|excellent|fair|love|helpful|clear|fine|awesome)\b/i;
 
 /** Lightweight sentiment from ratings + comment keywords (no external model needed). */
 function deriveSentiment(input: SubmitFeedbackInput): "positive" | "neutral" | "negative" {
-	let score = (input.overallRating - 3) + (input.proctoringRating - 3) * 0.5;
+	let score = input.overallRating - 3 + (input.proctoringRating - 3) * 0.5;
 	const issues = input.technicalIssues.filter((i) => i !== "none");
 	score -= issues.length * 0.5;
 	if (input.comments) {
@@ -42,7 +52,10 @@ function deriveSentiment(input: SubmitFeedbackInput): "positive" | "neutral" | "
 export async function submitFeedback(user: FeedbackUser, input: SubmitFeedbackInput) {
 	const attempt = await prisma.assessmentAttempt.findUnique({
 		where: { id: input.attemptId },
-		include: { assessment: { select: { id: true, title: true } }, examFeedback: { select: { id: true } } },
+		include: {
+			assessment: { select: { id: true, title: true } },
+			examFeedback: { select: { id: true } },
+		},
 	});
 
 	if (!attempt || attempt.studentId !== user.id) {
