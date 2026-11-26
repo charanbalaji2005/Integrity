@@ -210,6 +210,29 @@ function killTree(child: ChildProcess) {
 	}
 }
 
+/** Minimal environment for student programs; no server secrets. */
+function safeChildEnv(path: string): NodeJS.ProcessEnv {
+	const keep = [
+		"SystemRoot",
+		"SYSTEMROOT",
+		"WINDIR",
+		"TEMP",
+		"TMP",
+		"TMPDIR",
+		"JAVA_HOME",
+		"LANG",
+		"LC_ALL",
+	];
+	const out: NodeJS.ProcessEnv = {
+		PATH: path,
+		PYTHONIOENCODING: "utf-8",
+		PYTHONDONTWRITEBYTECODE: "1",
+		HOME: tmpdir(),
+	};
+	for (const k of keep) if (process.env[k]) out[k] = process.env[k];
+	return out;
+}
+
 function runProcess(
 	cmd: string,
 	args: string[],
@@ -223,12 +246,10 @@ function runProcess(
 			child = spawn(cmd, args, {
 				cwd: opts.cwd,
 				windowsHide: true,
-				env: {
-					...process.env,
-					PATH: pathParts,
-					PYTHONIOENCODING: "utf-8",
-					PYTHONDONTWRITEBYTECODE: "1",
-				},
+				// Never hand the server's environment (DB URL, auth secret, SMTP
+				// password…) to untrusted student programs: pass only what the
+				// compilers/runtimes need.
+				env: safeChildEnv(pathParts),
 			});
 		} catch (err) {
 			resolve({

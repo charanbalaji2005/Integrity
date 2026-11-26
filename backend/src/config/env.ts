@@ -98,6 +98,11 @@ const envSchema = z.object({
 	 * use it only on a trusted single-machine setup.
 	 */
 	CODE_EXECUTOR: z.enum(["judge0", "local"]).default("local"),
+	/**
+	 * The local executor has NO sandbox (student code runs as the server user and
+	 * could read its secrets). In production it is only used if this is "true".
+	 */
+	ALLOW_UNSANDBOXED_CODE: z.enum(["true", "false"]).default("false"),
 	/** Local executor overrides (auto-detected when unset). */
 	LOCAL_GCC_BIN_DIR: z.string().optional(),
 	LOCAL_JAVA_HOME: z.string().optional(),
@@ -134,6 +139,19 @@ const parsed = envSchema.safeParse(process.env);
 if (!parsed.success) {
 	console.error("Invalid environment variables:", parsed.error.flatten().fieldErrors);
 	process.exit(1);
+}
+
+if (
+	parsed.data.NODE_ENV === "production" &&
+	parsed.data.CODE_EXECUTOR === "local" &&
+	parsed.data.ALLOW_UNSANDBOXED_CODE !== "true"
+) {
+	// Safe default for cloud deployments: use the sandboxed Judge0 path (which
+	// reports "execution service unavailable" until JUDGE0_URL is configured).
+	console.warn(
+		"[Coding] CODE_EXECUTOR=local is disabled in production (no sandbox). Set JUDGE0_URL, or ALLOW_UNSANDBOXED_CODE=true to accept the risk.",
+	);
+	parsed.data.CODE_EXECUTOR = "judge0";
 }
 
 export const env = parsed.data;

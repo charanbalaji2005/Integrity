@@ -11,7 +11,9 @@ services:
     rootDir: backend
     plan: free
     region: oregon
-    buildCommand: npm install --include=dev && npx prisma generate && (npx prisma db push --accept-data-loss || true) && npm run build
+    # Applies committed migrations; falls back to a non-destructive db push for a
+    # database that was originally created with db push (never --accept-data-loss).
+    buildCommand: npm install --include=dev && npx prisma generate && (npx prisma migrate deploy || npx prisma db push) && npm run build
     startCommand: npm run start
     healthCheckPath: /api/health
     envVars:
@@ -20,9 +22,9 @@ services:
       - key: PORT
         value: 10000
       - key: DATABASE_URL
-        value: postgresql://neondb_owner:npg_34TmZcoVwsCN@ep-autumn-rain-bbbc2wdc-pooler.c-15.us-east-1.aws.neon.tech/neondb?sslmode=require
+        sync: false # set in the Render dashboard; never commit secrets
       - key: NEON_DATABASE_URL
-        value: postgresql://neondb_owner:npg_34TmZcoVwsCN@ep-autumn-rain-bbbc2wdc-pooler.c-15.us-east-1.aws.neon.tech/neondb?sslmode=require
+        sync: false # set in the Render dashboard; never commit secrets
       - key: BETTER_AUTH_SECRET
         generateValue: true
       - key: BETTER_AUTH_URL
@@ -36,19 +38,26 @@ services:
           name: integrityos-frontend
           property: host
       - key: ADMIN_EMAIL
-        value: charanbalajineelampalli752005@gmail.com
+        sync: false # set in the Render dashboard; never commit secrets
       - key: ADMIN_PASSWORD
-        value: "752006"
+        sync: false # set in the Render dashboard; never commit secrets
       - key: GROQ_API_KEY
         sync: false
       - key: GROQ_CHAT_MODEL
         value: openai/gpt-oss-120b
       - key: LLM_PROVIDER
         value: groq
+      # Code execution: free Render can't run a sandbox. Point these at a Judge0
+      # server (infra/judge0) to enable compiling; until then runs report
+      # "execution service unavailable". Never set ALLOW_UNSANDBOXED_CODE here.
+      - key: JUDGE0_URL
+        sync: false
+      - key: JUDGE0_AUTH_TOKEN
+        sync: false
       - key: SMTP_USER
-        value: neelampallicharanbalaji14@gmail.com
+        sync: false # set in the Render dashboard; never commit secrets
       - key: SMTP_PASS
-        value: hwipnbegmfaoxfju
+        sync: false # set in the Render dashboard; never commit secrets
 
   # ============================================================================
   # 2. FRONTEND INSTANCE: React / Vite Static Web Service
