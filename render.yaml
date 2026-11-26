@@ -13,7 +13,9 @@ services:
     region: oregon
     # Applies committed migrations; falls back to a non-destructive db push for a
     # database that was originally created with db push (never --accept-data-loss).
-    buildCommand: npm install --include=dev && npx prisma generate && (npx prisma migrate deploy || npx prisma db push) && npm run build
+    # Install EXACTLY the tested versions from pnpm-lock.yaml. `npm install` ignores
+    # that lockfile and pulled better-auth 1.7.x, which broke every sign-in.
+    buildCommand: npx -y pnpm@10.15.1 install --frozen-lockfile --prod=false --ignore-workspace && npx prisma generate && (npx prisma migrate deploy || npx prisma db push) && npm run build
     startCommand: npm run start
     healthCheckPath: /api/health
     envVars:
