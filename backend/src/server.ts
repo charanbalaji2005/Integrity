@@ -52,6 +52,11 @@ async function connectDatabaseWithRetry(maxAttempts = 8): Promise<void> {
 async function initialiseData() {
 	await connectDatabaseWithRetry();
 
+	// Public demo accounts for the login page (student / faculty / support; never
+	// admin). First, so a later startup step failing can't leave them missing.
+	const { ensureDemoAccountsOnce } = await import("./features/demo/demo-accounts");
+	await ensureDemoAccountsOnce().catch(() => {});
+
 	// Auto-seed default accounts on clean startup if needed
 	try {
 		const adminCount = await prisma.user.count({ where: { role: "admin" } });
@@ -84,9 +89,7 @@ async function initialiseData() {
 	);
 	startAssignmentScheduler();
 
-	// Public demo accounts for the login page (student / faculty / support; never admin).
-	const { ensureDemoAccounts } = await import("./features/demo/demo-accounts");
-	await ensureDemoAccounts().catch((err) => console.error("[Demo] Could not prepare demo accounts:", err));
+
 
 	// Vigil coding: poll the Judge0 sandbox for runs and process evaluation jobs.
 	const { startExecutionPoller } = await import("./features/coding/services/execution-service");

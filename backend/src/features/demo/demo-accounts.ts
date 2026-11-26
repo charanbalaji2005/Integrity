@@ -36,7 +36,9 @@ export function isDemoEmail(email: string | null | undefined): boolean {
 /** Portal a demo email belongs to (for the "wrong portal" message). */
 export function demoPortalOf(email: string): DemoPortal | null {
 	const e = email.trim().toLowerCase();
-	return (Object.keys(DEMO_ACCOUNTS) as DemoPortal[]).find((p) => DEMO_ACCOUNTS[p].email === e) ?? null;
+	return (
+		(Object.keys(DEMO_ACCOUNTS) as DemoPortal[]).find((p) => DEMO_ACCOUNTS[p].email === e) ?? null
+	);
 }
 
 async function upsertDemoUser(acc: (typeof DEMO_ACCOUNTS)[DemoPortal], passwordHash: string) {
@@ -56,13 +58,39 @@ async function upsertDemoUser(acc: (typeof DEMO_ACCOUNTS)[DemoPortal], passwordH
 		department: "Computer Science & Engineering",
 		section: DEMO_SECTION,
 		...(acc.role === "user"
-			? { semester: "Semester 5", branch: "CSE", rollNumber: "DEMO-STUDENT-0001", academicId: "DEMO-STUDENT-0001" }
-			: { designation: acc.role === "faculty" ? "Demo Faculty" : "Demo Support Engineer", academicId: `DEMO-${acc.role.toUpperCase()}` }),
+			? {
+					semester: "Semester 5",
+					branch: "CSE",
+					rollNumber: "DEMO-STUDENT-0001",
+					academicId: "DEMO-STUDENT-0001",
+				}
+			: {
+					designation: acc.role === "faculty" ? "Demo Faculty" : "Demo Support Engineer",
+					academicId: `DEMO-${acc.role.toUpperCase()}`,
+				}),
 	};
-	const user = await prisma.user.upsert({ where: { email: acc.email }, update: profile, create: { email: acc.email, ...profile } });
-	const cred = await prisma.account.findFirst({ where: { userId: user.id, providerId: "credential" } });
-	if (cred) await prisma.account.update({ where: { id: cred.id }, data: { password: passwordHash, accountId: acc.email } });
-	else await prisma.account.create({ data: { userId: user.id, accountId: acc.email, providerId: "credential", password: passwordHash } });
+	const user = await prisma.user.upsert({
+		where: { email: acc.email },
+		update: profile,
+		create: { email: acc.email, ...profile },
+	});
+	const cred = await prisma.account.findFirst({
+		where: { userId: user.id, providerId: "credential" },
+	});
+	if (cred)
+		await prisma.account.update({
+			where: { id: cred.id },
+			data: { password: passwordHash, accountId: acc.email },
+		});
+	else
+		await prisma.account.create({
+			data: {
+				userId: user.id,
+				accountId: acc.email,
+				providerId: "credential",
+				password: passwordHash,
+			},
+		});
 	return user;
 }
 
@@ -154,7 +182,9 @@ async function ensureDemoExam(facultyId: string, facultyName: string) {
 export async function ensureDemoAccounts(): Promise<void> {
 	if (!demoEnabled()) return;
 	const hash = await hashPassword(DEMO_PASSWORD);
-	const users = await Promise.all((Object.keys(DEMO_ACCOUNTS) as DemoPortal[]).map((p) => upsertDemoUser(DEMO_ACCOUNTS[p], hash)));
+	const users = await Promise.all(
+		(Object.keys(DEMO_ACCOUNTS) as DemoPortal[]).map((p) => upsertDemoUser(DEMO_ACCOUNTS[p], hash)),
+	);
 	const faculty = users[1]!;
 	await ensureDemoExam(faculty.id, faculty.name);
 	console.log("[Demo] Demo accounts ready (student / faculty / support).");
@@ -164,13 +194,44 @@ let demoIdCache: { at: number; ids: string[] } | null = null;
 /** User ids of the demo accounts (cached for a minute). */
 export async function demoUserIds(): Promise<string[]> {
 	if (demoIdCache && Date.now() - demoIdCache.at < 60000) return demoIdCache.ids;
-	const rows = await prisma.user.findMany({ where: { email: { in: DEMO_EMAILS } }, select: { id: true } });
+	const rows = await prisma.user.findMany({
+		where: { email: { in: DEMO_EMAILS } },
+		select: { id: true },
+	});
 	demoIdCache = { at: Date.now(), ids: rows.map((r) => r.id) };
 	return demoIdCache.ids;
 }
 
 /** True when a support ticket was raised by a demo account (the only tickets demo support may see). */
 export async function isDemoTicket(ticketId: string): Promise<boolean> {
-	const t = await prisma.supportTicket.findUnique({ where: { id: ticketId }, select: { studentId: true } });
+	const t = await prisma.supportTicket.findUnique({
+		where: { id: ticketId },
+		select: { studentId: true },
+	});
 	return !!t && (await demoUserIds()).includes(t.studentId);
+}
+
+let ensuring: Promise<void> | null = null;
+let lastError: string | null = null;
+/**
+ * Creates the demo accounts at most once per process (retries after a failure).
+ * Called at startup and lazily on demo sign-in / the login page, so a failing
+ * startup step elsewhere can never leave the demo accounts missing.
+ */
+export function ensureDemoAccountsOnce(): Promise<void> {
+	ensuring ??= ensureDemoAccounts()
+		.then(() => {
+			lastError = null;
+		})
+		.catch((err: unknown) => {
+			ensuring = null;
+			lastError = err instanceof Error ? err.message.slice(0, 300) : String(err).slice(0, 300);
+			console.error("[Demo] Could not prepare demo accounts:", err);
+			throw err;
+		});
+	return ensuring;
+}
+
+export function demoAccountsError(): string | null {
+	return lastError;
 }

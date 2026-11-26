@@ -1,6 +1,12 @@
 import { type IRouter, Router } from "express";
 import { rateLimiter, requireAuth } from "@/middleware/auth-middleware";
-import { DEMO_ACCOUNTS, DEMO_PASSWORD, demoEnabled } from "../../demo/demo-accounts";
+import {
+	DEMO_ACCOUNTS,
+	DEMO_PASSWORD,
+	demoAccountsError,
+	demoEnabled,
+	ensureDemoAccountsOnce,
+} from "../../demo/demo-accounts";
 import {
 	forgotPassword,
 	googleOAuth,
@@ -45,14 +51,25 @@ router.post("/verify-register-otp", authRateLimiter, verifyRegisterOtpHandler);
 router.post("/login", authRateLimiter, login);
 
 // Public demo credentials for the login page (student / faculty / support; never admin).
-router.get("/demo-accounts", (_req, res) => {
+router.get("/demo-accounts", async (_req, res) => {
 	if (!demoEnabled()) return res.json({ success: true, data: { enabled: false } });
+	// Warm up: creates the accounts if a startup step failed before they were made.
+	const ready = await ensureDemoAccountsOnce().then(
+		() => true,
+		() => false,
+	);
 	res.json({
 		success: true,
 		data: {
 			enabled: true,
+			ready,
+			...(ready ? {} : { error: demoAccountsError() }),
 			password: DEMO_PASSWORD,
-			accounts: { student: DEMO_ACCOUNTS.student.email, faculty: DEMO_ACCOUNTS.faculty.email, support: DEMO_ACCOUNTS.support.email },
+			accounts: {
+				student: DEMO_ACCOUNTS.student.email,
+				faculty: DEMO_ACCOUNTS.faculty.email,
+				support: DEMO_ACCOUNTS.support.email,
+			},
 		},
 	});
 });
